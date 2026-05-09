@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Play, Heart, Clock, ChevronLeft, Flame, Waves, Moon, Zap, Star } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
+import { SessionPlayer } from './SessionPlayer'
 import { meditationCategories, meditationSessions } from '@/lib/demo-data'
 import { cn } from '@/lib/utils'
 import type { MeditationSession } from '@/lib/types'
@@ -24,18 +25,27 @@ interface MeditationViewProps {
 export function MeditationView({ onBack }: MeditationViewProps) {
   const [selectedCategory, setSelectedCategory] = useState('quick')
   const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
+  const [activeSession, setActiveSession] = useState<MeditationSession | null>(null)
 
   const filtered = selectedCategory === 'favorites'
     ? meditationSessions.filter(s => s.isFavorite)
     : meditationSessions.filter(s => s.category === selectedCategory)
+
+  if (activeSession) {
+    return (
+      <SessionPlayer
+        session={activeSession}
+        onClose={() => setActiveSession(null)}
+      />
+    )
+  }
 
   if (selectedSession) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center gap-3 p-4 pb-3">
           <button
-            onClick={() => { setSelectedSession(null); setIsPlaying(false) }}
+            onClick={() => setSelectedSession(null)}
             className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
             style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
           >
@@ -67,30 +77,17 @@ export function MeditationView({ onBack }: MeditationViewProps) {
           </div>
 
           <button
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="w-full py-4 rounded-2xl font-semibold text-white transition-all duration-400 active:scale-[0.97]"
+            onClick={() => setActiveSession(selectedSession)}
+            className="w-full py-4 rounded-2xl font-semibold transition-all duration-400 active:scale-[0.97]"
             style={{
-              background: isPlaying
-                ? 'rgba(139,117,207,0.2)'
-                : 'linear-gradient(135deg, rgba(201,150,90,0.8), rgba(201,150,90,0.5))',
-              border: `1px solid ${isPlaying ? 'rgba(139,117,207,0.3)' : 'rgba(201,150,90,0.3)'}`,
-              boxShadow: isPlaying ? 'var(--glow-violet)' : 'var(--glow-amber)',
-              color: isPlaying ? 'var(--violet)' : 'rgba(255,240,210,0.95)',
+              background: 'linear-gradient(135deg, rgba(201,150,90,0.8), rgba(201,150,90,0.5))',
+              border: '1px solid rgba(201,150,90,0.3)',
+              boxShadow: 'var(--glow-amber)',
+              color: 'rgba(255,240,210,0.95)',
             }}
           >
-            {isPlaying ? 'Пауза' : 'Начать медитацию'}
+            Начать медитацию
           </button>
-
-          {isPlaying && (
-            <GlassCard accent="violet" className="p-4 text-center">
-              <p className="text-sm font-medium" style={{ color: 'var(--violet)' }}>
-                Закройте глаза. Сосредоточьтесь на дыхании.
-              </p>
-              <p className="text-xs mt-1.5" style={{ color: 'rgba(255,220,170,0.3)' }}>
-                {selectedSession.duration} минут · не беспокоить
-              </p>
-            </GlassCard>
-          )}
         </div>
       </div>
     )
