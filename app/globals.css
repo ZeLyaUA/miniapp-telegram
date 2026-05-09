@@ -5,6 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-neon-orange: var(--neon-orange);
+  --color-neon-cyan: var(--neon-cyan);
+  --color-navy-deep: var(--navy-deep);
+  --color-navy-card: var(--navy-card);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -49,6 +53,14 @@
 }
 
 :root {
+  --neon-orange: #ff6b35;
+  --neon-cyan: #00d4ff;
+  --navy-deep: #080e28;
+  --navy-card: rgba(10, 18, 50, 0.8);
+  --glass-border: rgba(0, 212, 255, 0.15);
+  --glass-border-orange: rgba(255, 107, 53, 0.25);
+  --glow-orange: 0 0 20px rgba(255, 107, 53, 0.45), 0 0 40px rgba(255, 107, 53, 0.2);
+  --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.35), 0 0 40px rgba(0, 212, 255, 0.15);
   --background: oklch(1 0 0);
   --foreground: oklch(0.153 0.006 107.1);
   --card: oklch(1 0 0);
@@ -122,12 +134,63 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground overflow-hidden;
+    background-color: var(--navy-deep);
+    height: 100dvh;
   }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
   }
   html {
     @apply font-sans;
+    height: 100%;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: var(--navy-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+  }
+  .glass-card-orange {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: var(--navy-card);
+    border: 1px solid var(--glass-border-orange);
+    border-radius: 1rem;
+  }
+  .glow-orange {
+    box-shadow: var(--glow-orange);
+  }
+  .glow-cyan {
+    box-shadow: var(--glow-cyan);
+  }
+  .text-neon-orange {
+    color: var(--neon-orange);
+  }
+  .text-neon-cyan {
+    color: var(--neon-cyan);
+  }
+  .bg-neon-orange {
+    background-color: var(--neon-orange);
+  }
+  .bg-neon-cyan {
+    background-color: var(--neon-cyan);
+  }
+  .border-neon-orange {
+    border-color: var(--neon-orange);
+  }
+  .border-neon-cyan {
+    border-color: var(--neon-cyan);
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

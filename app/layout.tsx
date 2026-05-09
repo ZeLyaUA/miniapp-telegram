@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Telegram Mini App",
-  description: "Telegram Mini App",
+  title: "Wellness | Медитация",
+  description: "Медитация, дыхание и осознанность",
 };
 
 export default function RootLayout({
@@ -25,10 +25,10 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang="ru"
+      className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="flex flex-col">
         <TelegramProvider>{children}</TelegramProvider>
       </body>
     </html>

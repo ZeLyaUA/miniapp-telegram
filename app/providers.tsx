@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { init } from '@telegram-apps/sdk-react'
+import { init, mountViewport, expandViewport, bindViewportCssVars } from '@telegram-apps/sdk-react'
 
 export function TelegramProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -9,7 +9,12 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       import('eruda').then(({ default: eruda }) => eruda.init())
     }
     try {
-      return init()
+      const cleanup = init()
+      mountViewport().then(() => {
+        bindViewportCssVars()
+        expandViewport()
+      }).catch(() => {})
+      return cleanup
     } catch {
       // вне Telegram — ограниченный режим
     }
