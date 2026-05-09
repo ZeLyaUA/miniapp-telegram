@@ -1,44 +1,38 @@
 'use client'
 
-import { Brain, Wind, CalendarCheck, BarChart3, Flame, Clock } from 'lucide-react'
+import { Brain, Wind, CalendarCheck, BarChart3, Play } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
-import { dailyStats } from '@/lib/demo-data'
+import { dailyStats, meditationSessions } from '@/lib/demo-data'
 import type { SectionId } from '@/lib/types'
 
-const sections = [
-  {
-    id: 'meditation' as SectionId,
-    title: 'Медитация',
-    subtitle: 'Спокойствие и фокус',
-    icon: Brain,
-    color: 'cyan' as const,
-    accent: '#00d4ff',
-  },
-  {
-    id: 'breathing' as SectionId,
-    title: 'Дыхательные практики',
-    subtitle: 'Техника и осознанность',
-    icon: Wind,
-    color: 'orange' as const,
-    accent: '#ff6b35',
-  },
-  {
-    id: 'plan' as SectionId,
-    title: 'План',
-    subtitle: 'Путь к цели',
-    icon: CalendarCheck,
-    color: 'cyan' as const,
-    accent: '#00d4ff',
-  },
-  {
-    id: 'tracker' as SectionId,
-    title: 'Трекер',
-    subtitle: 'Привычки и прогресс',
-    icon: BarChart3,
-    color: 'orange' as const,
-    accent: '#ff6b35',
-  },
+const quickActions: { id: SectionId; label: string; icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[] = [
+  { id: 'breathing', label: 'Дыхание', icon: Wind },
+  { id: 'meditation', label: 'Медитация', icon: Brain },
+  { id: 'plan', label: 'План', icon: CalendarCheck },
+  { id: 'tracker', label: 'Трекер', icon: BarChart3 },
 ]
+
+function getGreeting(): string {
+  const h = new Date().getHours()
+  if (h >= 5 && h < 12) return 'Доброе утро'
+  if (h >= 12 && h < 17) return 'Добрый день'
+  if (h >= 17 && h < 22) return 'Добрый вечер'
+  return 'Доброй ночи'
+}
+
+function getFeaturedSession() {
+  const h = new Date().getHours()
+  if (h >= 5 && h < 11)  return meditationSessions.find(s => s.id === 'm1')!
+  if (h >= 11 && h < 17) return meditationSessions.find(s => s.id === 'm11')!
+  if (h >= 17 && h < 21) return meditationSessions.find(s => s.id === 'm7')!
+  return meditationSessions.find(s => s.id === 'm9')!
+}
+
+const levelLabel: Record<string, string> = {
+  beginner: 'Начинающий',
+  intermediate: 'Средний',
+  advanced: 'Продвинутый',
+}
 
 interface HomeViewProps {
   firstName: string | null
@@ -46,101 +40,139 @@ interface HomeViewProps {
 }
 
 export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
-  const { streak, meditationMinutes, breathingSessions, weekData } = dailyStats
-  const todayMinutes = weekData[weekData.length - 1] || meditationMinutes
+  const { streak, weekData } = dailyStats
+  const featured = getFeaturedSession()
+  const completedDays = weekData.map(v => v > 0)
 
   return (
-    <div className="flex flex-col gap-4 px-4 pb-4">
-      <div className="pt-4 pb-1">
-        <p className="text-white/50 text-sm">Добро пожаловать{firstName ? ',' : ''}</p>
-        <h1 className="text-white text-2xl font-bold mt-0.5">
-          {firstName ?? 'в Wellness'}
+    <div className="flex flex-col gap-5 px-4 pb-28">
+      {/* Greeting */}
+      <div className="pt-6">
+        <p className="text-warm text-sm">{getGreeting()}{firstName ? ',' : ''}</p>
+        <h1 className="text-white font-bold mt-0.5" style={{ fontSize: 28, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+          {firstName ?? 'ваш ритуал ждёт'}
         </h1>
-      </div>
-
-      <GlassCard accent="orange" className="p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center glow-orange"
-            style={{ background: 'rgba(255, 107, 53, 0.2)' }}
-          >
-            <Flame size={24} className="text-neon-orange" />
-          </div>
-          <div>
-            <p className="text-white font-bold text-xl">{streak} дней</p>
-            <p className="text-white/50 text-xs">Серия практик</p>
-          </div>
-        </div>
-        <div className="flex gap-4 items-center">
-          <div className="text-center">
-            <p className="text-neon-cyan font-semibold text-lg">{todayMinutes}</p>
-            <p className="text-white/40 text-xs">мин сегодня</p>
-          </div>
-          <div className="text-center">
-            <p className="text-neon-orange font-semibold text-lg">{breathingSessions}</p>
-            <p className="text-white/40 text-xs">дыхание</p>
-          </div>
-        </div>
-      </GlassCard>
-
-      <div className="flex items-center gap-2">
-        <Clock size={14} className="text-white/40" />
-        <p className="text-white/40 text-xs uppercase tracking-wider">Разделы</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        {sections.map(({ id, title, subtitle, icon: Icon, color, accent }) => (
-          <button
-            key={id}
-            onClick={() => onSectionSelect(id)}
-            className="text-left transition-transform duration-150 active:scale-95"
-          >
-            <GlassCard
-              accent={color}
-              className="p-4 h-full flex flex-col gap-3"
-            >
-              <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: `rgba(${color === 'cyan' ? '0, 212, 255' : '255, 107, 53'}, 0.15)`,
-                  boxShadow: `0 0 16px rgba(${color === 'cyan' ? '0, 212, 255' : '255, 107, 53'}, 0.25)`,
-                }}
-              >
-                <Icon size={24} style={{ color: accent }} />
-              </div>
-              <div>
-                <p className="text-white font-semibold text-sm leading-tight">{title}</p>
-                <p className="text-white/50 text-xs mt-0.5">{subtitle}</p>
-              </div>
-            </GlassCard>
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-1">
-        <p className="text-white/40 text-xs uppercase tracking-wider mb-3 flex items-center gap-2">
-          <BarChart3 size={13} />
-          Активность за неделю
+        <p
+          className="mt-1.5 text-xs"
+          style={{ color: 'rgba(255, 220, 170, 0.4)', letterSpacing: '0.04em' }}
+        >
+          {streak} дней серии · продолжайте
         </p>
+      </div>
+
+      {/* Featured practice card */}
+      <button
+        onClick={() => onSectionSelect('meditation')}
+        className="text-left w-full transition-all duration-500 active:scale-[0.98] active:opacity-90"
+      >
+        <div
+          className="relative overflow-hidden rounded-3xl p-6 flex flex-col gap-4"
+          style={{
+            background: featured.moodColor ?? 'linear-gradient(135deg, rgba(201,150,90,0.3) 0%, rgba(139,117,207,0.2) 100%)',
+            border: '1px solid rgba(255,220,170,0.1)',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)',
+            minHeight: 220,
+          }}
+        >
+          {/* Ambient blur orb */}
+          <div
+            className="absolute -top-8 -right-8 w-40 h-40 rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(201,150,90,0.25) 0%, transparent 70%)',
+              filter: 'blur(20px)',
+            }}
+          />
+          <div>
+            <span
+              className="inline-block text-xs font-medium px-3 py-1 rounded-full mb-3"
+              style={{ background: 'rgba(255,220,170,0.1)', color: 'rgba(255,220,170,0.7)', letterSpacing: '0.06em' }}
+            >
+              РЕКОМЕНДУЕТСЯ СЕЙЧАС
+            </span>
+            <h2 className="text-white font-bold text-xl leading-tight">{featured.title}</h2>
+            <p className="text-white/50 text-sm mt-1">{featured.description}</p>
+          </div>
+          <div className="flex items-center justify-between mt-auto">
+            <div className="flex gap-3 text-xs" style={{ color: 'rgba(255,220,170,0.5)' }}>
+              <span>{featured.duration} мин</span>
+              <span>·</span>
+              <span>{levelLabel[featured.level]}</span>
+            </div>
+            <div
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full font-medium text-sm"
+              style={{
+                background: 'rgba(255,220,170,0.15)',
+                border: '1px solid rgba(255,220,170,0.2)',
+                color: 'rgba(255,220,170,0.9)',
+              }}
+            >
+              <Play size={14} style={{ marginLeft: 1 }} />
+              Начать
+            </div>
+          </div>
+        </div>
+      </button>
+
+      {/* Quick access */}
+      <div>
+        <p className="label-upper mb-3">Быстрый доступ</p>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+          {quickActions.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => onSectionSelect(id)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full flex-shrink-0 transition-all duration-300 active:scale-95"
+              style={{
+                background: 'rgba(255,248,235,0.06)',
+                border: '1px solid rgba(255,220,170,0.08)',
+                color: 'rgba(255,248,235,0.7)',
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            >
+              <Icon size={15} style={{ color: 'var(--amber)', opacity: 0.8 }} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Week progress — circles */}
+      <div>
+        <p className="label-upper mb-3">Прогресс недели</p>
         <GlassCard className="p-4">
-          <div className="flex items-end gap-2 h-16 justify-between">
+          <div className="flex items-center justify-between gap-1">
             {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, i) => {
-              const val = weekData[i] ?? 0
-              const max = Math.max(...weekData)
-              const height = max > 0 ? Math.max((val / max) * 100, val > 0 ? 15 : 5) : 5
+              const done = completedDays[i] ?? false
+              const isToday = i === new Date().getDay() - 1
               return (
-                <div key={day} className="flex flex-col items-center gap-1 flex-1">
+                <div key={day} className="flex flex-col items-center gap-2 flex-1">
                   <div
-                    className="w-full rounded-sm transition-all"
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500"
                     style={{
-                      height: `${height}%`,
-                      background: val > 0
-                        ? 'linear-gradient(to top, var(--neon-orange), var(--neon-cyan))'
-                        : 'rgba(255,255,255,0.08)',
-                      minHeight: '4px',
+                      background: done
+                        ? 'linear-gradient(135deg, var(--amber), rgba(201,150,90,0.6))'
+                        : isToday
+                          ? 'rgba(201,150,90,0.12)'
+                          : 'rgba(255,255,255,0.04)',
+                      border: done
+                        ? 'none'
+                        : isToday
+                          ? '1px solid rgba(201,150,90,0.4)'
+                          : '1px solid rgba(255,255,255,0.06)',
+                      boxShadow: done ? 'var(--glow-amber)' : 'none',
                     }}
-                  />
-                  <span className="text-white/30 text-[9px]">{day}</span>
+                  >
+                    {done && (
+                      <div className="w-2 h-2 rounded-full bg-white opacity-90" />
+                    )}
+                  </div>
+                  <span
+                    className="text-[10px]"
+                    style={{ color: done ? 'var(--amber)' : 'rgba(255,255,255,0.25)' }}
+                  >
+                    {day}
+                  </span>
                 </div>
               )
             })}

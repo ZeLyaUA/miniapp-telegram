@@ -57,7 +57,7 @@ export default function Page() {
   return (
     <main className="flex flex-col" style={{ height: '100dvh' }}>
       <div className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto scrollbar-hide pb-16">
+        <div className="h-full overflow-y-auto scrollbar-hide">
           {renderContent()}
         </div>
       </div>

@@ -3,14 +3,16 @@ import { cn } from '@/lib/utils'
 interface GlassCardProps {
   children: React.ReactNode
   className?: string
-  accent?: 'orange' | 'cyan' | 'none'
+  accent?: 'amber' | 'violet' | 'none'
 }
 
-export function GlassCard({ children, className, accent = 'cyan' }: GlassCardProps) {
+export function GlassCard({ children, className, accent = 'none' }: GlassCardProps) {
   return (
     <div
       className={cn(
-        accent === 'orange' ? 'glass-card-orange' : 'glass-card',
+        accent === 'amber' ? 'ritual-card-amber' :
+        accent === 'violet' ? 'ritual-card-violet' :
+        'ritual-card',
         className
       )}
     >

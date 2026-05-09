@@ -7,7 +7,7 @@ import { meditationCategories, meditationSessions } from '@/lib/demo-data'
 import { cn } from '@/lib/utils'
 import type { MeditationSession } from '@/lib/types'
 
-const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>> = {
+const iconMap: Record<string, React.ComponentType<{ size?: number; strokeWidth?: number }>> = {
   Play, Flame, Waves, Moon, Zap, Heart, Star,
 }
 
@@ -33,56 +33,62 @@ export function MeditationView({ onBack }: MeditationViewProps) {
   if (selectedSession) {
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center gap-3 p-4 pb-2">
+        <div className="flex items-center gap-3 p-4 pb-3">
           <button
             onClick={() => { setSelectedSession(null); setIsPlaying(false) }}
-            className="w-8 h-8 flex items-center justify-center rounded-full"
-            style={{ background: 'rgba(255,255,255,0.08)' }}
+            className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
+            style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
           >
-            <ChevronLeft size={18} className="text-white" />
+            <ChevronLeft size={18} style={{ color: 'rgba(255,248,235,0.7)' }} />
           </button>
-          <span className="text-white/60 text-sm">Медитация</span>
+          <span style={{ color: 'rgba(255,220,170,0.4)', fontSize: 13 }}>Медитация</span>
         </div>
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-4 flex flex-col gap-4">
-          <GlassCard className="p-6 flex flex-col items-center gap-4 mt-2">
-            <div
-              className="w-24 h-24 rounded-full flex items-center justify-center"
-              style={{
-                background: 'radial-gradient(circle, rgba(0,212,255,0.3) 0%, rgba(0,212,255,0.05) 100%)',
-                boxShadow: 'var(--glow-cyan)',
-              }}
-            >
-              <Brain24 />
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 flex flex-col gap-4">
+          {/* Hero card with mood gradient */}
+          <div
+            className="rounded-3xl p-6 flex flex-col gap-4"
+            style={{
+              background: selectedSession.moodColor ?? 'linear-gradient(135deg, rgba(201,150,90,0.3) 0%, rgba(139,117,207,0.2) 100%)',
+              border: '1px solid rgba(255,220,170,0.1)',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+              minHeight: 200,
+            }}
+          >
+            <div>
+              <h2 className="text-white font-bold text-2xl leading-tight">{selectedSession.title}</h2>
+              <p className="text-white/50 text-sm mt-2">{selectedSession.description}</p>
             </div>
-            <div className="text-center">
-              <h2 className="text-white text-xl font-bold">{selectedSession.title}</h2>
-              <p className="text-white/50 text-sm mt-1">{selectedSession.description}</p>
+            <div className="flex items-center gap-3 text-xs mt-auto" style={{ color: 'rgba(255,220,170,0.5)' }}>
+              <span className="flex items-center gap-1"><Clock size={11} /> {selectedSession.duration} мин</span>
+              <span>·</span>
+              <span>{levelLabel[selectedSession.level]}</span>
+              {selectedSession.isFavorite && <Heart size={11} fill="currentColor" style={{ color: 'var(--rose)', marginLeft: 'auto' }} />}
             </div>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-1.5 text-white/50 text-sm">
-                <Clock size={14} />
-                {selectedSession.duration} мин
-              </div>
-              <div className="text-white/30">•</div>
-              <div className="text-white/50 text-sm">{levelLabel[selectedSession.level]}</div>
-            </div>
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="w-full py-3.5 rounded-2xl font-semibold text-white transition-all duration-200 active:scale-95"
-              style={{
-                background: isPlaying
-                  ? 'rgba(255,107,53,0.2)'
-                  : 'linear-gradient(135deg, var(--neon-cyan), rgba(0,180,220,1))',
-                boxShadow: isPlaying ? 'var(--glow-orange)' : 'var(--glow-cyan)',
-              }}
-            >
-              {isPlaying ? 'Пауза' : 'Начать медитацию'}
-            </button>
-          </GlassCard>
+          </div>
+
+          <button
+            onClick={() => setIsPlaying(!isPlaying)}
+            className="w-full py-4 rounded-2xl font-semibold text-white transition-all duration-400 active:scale-[0.97]"
+            style={{
+              background: isPlaying
+                ? 'rgba(139,117,207,0.2)'
+                : 'linear-gradient(135deg, rgba(201,150,90,0.8), rgba(201,150,90,0.5))',
+              border: `1px solid ${isPlaying ? 'rgba(139,117,207,0.3)' : 'rgba(201,150,90,0.3)'}`,
+              boxShadow: isPlaying ? 'var(--glow-violet)' : 'var(--glow-amber)',
+              color: isPlaying ? 'var(--violet)' : 'rgba(255,240,210,0.95)',
+            }}
+          >
+            {isPlaying ? 'Пауза' : 'Начать медитацию'}
+          </button>
+
           {isPlaying && (
-            <GlassCard accent="cyan" className="p-4 text-center">
-              <p className="text-neon-cyan text-sm font-medium">Закройте глаза и сосредоточьтесь на дыхании...</p>
-              <p className="text-white/40 text-xs mt-1">{selectedSession.duration} минут · Не беспокоить</p>
+            <GlassCard accent="violet" className="p-4 text-center">
+              <p className="text-sm font-medium" style={{ color: 'var(--violet)' }}>
+                Закройте глаза. Сосредоточьтесь на дыхании.
+              </p>
+              <p className="text-xs mt-1.5" style={{ color: 'rgba(255,220,170,0.3)' }}>
+                {selectedSession.duration} минут · не беспокоить
+              </p>
             </GlassCard>
           )}
         </div>
@@ -92,20 +98,21 @@ export function MeditationView({ onBack }: MeditationViewProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 p-4 pb-2">
+      <div className="flex items-center gap-3 p-4 pb-3">
         <button
           onClick={onBack}
-          className="w-8 h-8 flex items-center justify-center rounded-full"
-          style={{ background: 'rgba(255,255,255,0.08)' }}
+          className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
+          style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
         >
-          <ChevronLeft size={18} className="text-white" />
+          <ChevronLeft size={18} style={{ color: 'rgba(255,248,235,0.7)' }} />
         </button>
         <div>
           <h1 className="text-white font-bold text-lg leading-tight">Медитация</h1>
-          <p className="text-white/40 text-xs">Спокойствие и фокус</p>
+          <p className="label-upper" style={{ marginTop: 2 }}>Спокойствие и фокус</p>
         </div>
       </div>
 
+      {/* Category filter */}
       <div className="flex gap-2 px-4 overflow-x-auto scrollbar-hide py-2">
         {meditationCategories.map(cat => {
           const Icon = iconMap[cat.icon] ?? Play
@@ -115,70 +122,76 @@ export function MeditationView({ onBack }: MeditationViewProps) {
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
               className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex-shrink-0',
-                isActive
-                  ? 'text-white glow-cyan'
-                  : 'text-white/50'
+                'flex items-center gap-2 px-3.5 py-2 text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-300',
+                isActive ? 'text-white' : ''
               )}
               style={{
+                borderRadius: '100px',
                 background: isActive
-                  ? 'linear-gradient(135deg, rgba(0,212,255,0.3), rgba(0,212,255,0.1))'
-                  : 'rgba(255,255,255,0.05)',
-                border: isActive ? '1px solid rgba(0,212,255,0.4)' : '1px solid transparent',
+                  ? 'linear-gradient(135deg, rgba(201,150,90,0.3), rgba(201,150,90,0.12))'
+                  : 'rgba(255,248,235,0.05)',
+                border: isActive
+                  ? '1px solid rgba(201,150,90,0.3)'
+                  : '1px solid rgba(255,220,170,0.06)',
+                color: isActive ? 'var(--amber)' : 'rgba(255,248,235,0.45)',
               }}
             >
-              <Icon size={14} style={isActive ? { color: 'var(--neon-cyan)' } : {}} />
+              <Icon size={13} strokeWidth={isActive ? 2.5 : 1.5} />
               {cat.label}
             </button>
           )
         })}
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-4 flex flex-col gap-3">
+      {/* Session list — album art style */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 flex flex-col gap-3 mt-2">
         {filtered.length === 0 && (
-          <div className="flex-1 flex items-center justify-center py-12">
-            <p className="text-white/30 text-sm">Нет сессий в этой категории</p>
+          <div className="py-16 text-center">
+            <p style={{ color: 'rgba(255,220,170,0.25)', fontSize: 13 }}>Нет сессий</p>
           </div>
         )}
         {filtered.map(session => (
           <button
             key={session.id}
             onClick={() => setSelectedSession(session)}
-            className="text-left w-full transition-transform duration-150 active:scale-[0.98]"
+            className="text-left w-full transition-all duration-400 active:scale-[0.98]"
           >
-            <GlassCard className="p-4 flex items-center gap-4">
+            <div
+              className="relative overflow-hidden rounded-2xl p-4 flex items-center gap-4"
+              style={{
+                background: session.moodColor ?? 'rgba(255,248,235,0.04)',
+                border: '1px solid rgba(255,220,170,0.08)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+              }}
+            >
+              {/* Play button */}
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(0,212,255,0.12)', boxShadow: 'var(--glow-cyan)' }}
+                style={{ background: 'rgba(255,255,255,0.1)' }}
               >
-                <Play size={20} className="text-neon-cyan" style={{ marginLeft: 2 }} />
+                <Play size={18} style={{ color: 'rgba(255,240,210,0.9)', marginLeft: 2 }} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-white font-medium text-sm truncate">{session.title}</p>
-                  {session.isFavorite && <Heart size={12} className="text-neon-orange flex-shrink-0" fill="currentColor" />}
+                  <p className="text-white font-semibold text-sm truncate">{session.title}</p>
+                  {session.isFavorite && (
+                    <Heart size={11} fill="currentColor" style={{ color: 'var(--rose)', flexShrink: 0 }} />
+                  )}
                 </div>
-                <p className="text-white/40 text-xs mt-0.5 truncate">{session.description}</p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <Clock size={11} className="text-white/30" />
-                  <span className="text-white/30 text-xs">{session.duration} мин</span>
-                  <span className="text-white/20 text-xs">·</span>
-                  <span className="text-white/30 text-xs">{levelLabel[session.level]}</span>
+                <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  {session.description}
+                </p>
+                <div className="flex items-center gap-2 mt-1.5 text-xs" style={{ color: 'rgba(255,220,170,0.4)' }}>
+                  <Clock size={10} />
+                  <span>{session.duration} мин</span>
+                  <span style={{ opacity: 0.5 }}>·</span>
+                  <span>{levelLabel[session.level]}</span>
                 </div>
               </div>
-            </GlassCard>
+            </div>
           </button>
         ))}
       </div>
     </div>
-  )
-}
-
-function Brain24() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.6A3 3 0 0 1 3.1 9.6a2.5 2.5 0 0 1 2.4-5.1A2.5 2.5 0 0 1 9.5 2Z"/>
-      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.6A3 3 0 0 0 20.9 9.6a2.5 2.5 0 0 0-2.4-5.1A2.5 2.5 0 0 0 14.5 2Z"/>
-    </svg>
   )
 }

@@ -20,18 +20,18 @@ export const meditationCategories: MeditationCategory[] = [
 ]
 
 export const meditationSessions: MeditationSession[] = [
-  { id: 'm1', title: 'Утренняя ясность', description: 'Мягкое пробуждение и настрой на день', duration: 7, category: 'quick', isFavorite: true, level: 'beginner' },
-  { id: 'm2', title: 'Быстрое спокойствие', description: 'Снятие напряжения за несколько минут', duration: 5, category: 'quick', isFavorite: false, level: 'beginner' },
-  { id: 'm3', title: 'Дыхание осознанности', description: 'Погружение в настоящий момент', duration: 10, category: 'quick', isFavorite: false, level: 'beginner' },
-  { id: 'm4', title: 'Глубокое погружение', description: 'Длительная медитация для опытных', duration: 30, category: 'popular', isFavorite: true, level: 'intermediate' },
-  { id: 'm5', title: 'Сканирование тела', description: 'Полное расслабление от головы до ног', duration: 25, category: 'popular', isFavorite: false, level: 'intermediate' },
-  { id: 'm6', title: 'Медитация любящей доброты', description: 'Раскрытие сердца и сострадание', duration: 20, category: 'popular', isFavorite: false, level: 'beginner' },
-  { id: 'm7', title: 'Растворение тревоги', description: 'Освобождение от беспокойства', duration: 15, category: 'stress', isFavorite: true, level: 'beginner' },
-  { id: 'm8', title: 'Якорь спокойствия', description: 'Техника заземления в стрессовых ситуациях', duration: 10, category: 'stress', isFavorite: false, level: 'intermediate' },
-  { id: 'm9', title: 'Вечерний ритуал', description: 'Подготовка к глубокому и восстанавливающему сну', duration: 20, category: 'sleep', isFavorite: false, level: 'beginner' },
-  { id: 'm10', title: 'Йога-нидра', description: 'Йогический сон для полного восстановления', duration: 35, category: 'sleep', isFavorite: true, level: 'intermediate' },
-  { id: 'm11', title: 'Огонь внимания', description: 'Активация и концентрация умственной энергии', duration: 12, category: 'energy', isFavorite: false, level: 'intermediate' },
-  { id: 'm12', title: 'Поток', description: 'Состояние максимальной продуктивности', duration: 18, category: 'energy', isFavorite: true, level: 'advanced' },
+  { id: 'm1', title: 'Утренняя ясность', description: 'Мягкое пробуждение и настрой на день', duration: 7, category: 'quick', isFavorite: true, level: 'beginner', moodColor: 'linear-gradient(135deg, rgba(201,150,90,0.4) 0%, rgba(196,120,138,0.2) 100%)' },
+  { id: 'm2', title: 'Быстрое спокойствие', description: 'Снятие напряжения за несколько минут', duration: 5, category: 'quick', isFavorite: false, level: 'beginner', moodColor: 'linear-gradient(135deg, rgba(139,117,207,0.3) 0%, rgba(106,155,126,0.15) 100%)' },
+  { id: 'm3', title: 'Дыхание осознанности', description: 'Погружение в настоящий момент', duration: 10, category: 'quick', isFavorite: false, level: 'beginner', moodColor: 'linear-gradient(135deg, rgba(106,155,126,0.3) 0%, rgba(139,117,207,0.15) 100%)' },
+  { id: 'm4', title: 'Глубокое погружение', description: 'Длительная медитация для опытных', duration: 30, category: 'popular', isFavorite: true, level: 'intermediate', moodColor: 'linear-gradient(135deg, rgba(139,117,207,0.5) 0%, rgba(9,7,15,0.1) 100%)' },
+  { id: 'm5', title: 'Сканирование тела', description: 'Полное расслабление от головы до ног', duration: 25, category: 'popular', isFavorite: false, level: 'intermediate', moodColor: 'linear-gradient(135deg, rgba(196,120,138,0.35) 0%, rgba(139,117,207,0.2) 100%)' },
+  { id: 'm6', title: 'Медитация любящей доброты', description: 'Раскрытие сердца и сострадание', duration: 20, category: 'popular', isFavorite: false, level: 'beginner', moodColor: 'linear-gradient(135deg, rgba(196,120,138,0.45) 0%, rgba(201,150,90,0.15) 100%)' },
+  { id: 'm7', title: 'Растворение тревоги', description: 'Освобождение от беспокойства', duration: 15, category: 'stress', isFavorite: true, level: 'beginner', moodColor: 'linear-gradient(135deg, rgba(106,155,126,0.4) 0%, rgba(139,117,207,0.2) 100%)' },
+  { id: 'm8', title: 'Якорь спокойствия', description: 'Техника заземления в стрессовых ситуациях', duration: 10, category: 'stress', isFavorite: false, level: 'intermediate', moodColor: 'linear-gradient(135deg, rgba(139,117,207,0.35) 0%, rgba(106,155,126,0.15) 100%)' },
+  { id: 'm9', title: 'Вечерний ритуал', description: 'Подготовка к глубокому и восстанавливающему сну', duration: 20, category: 'sleep', isFavorite: false, level: 'beginner', moodColor: 'linear-gradient(135deg, rgba(30,20,60,0.8) 0%, rgba(139,117,207,0.3) 100%)' },
+  { id: 'm10', title: 'Йога-нидра', description: 'Йогический сон для полного восстановления', duration: 35, category: 'sleep', isFavorite: true, level: 'intermediate', moodColor: 'linear-gradient(135deg, rgba(20,15,50,0.9) 0%, rgba(139,117,207,0.4) 100%)' },
+  { id: 'm11', title: 'Огонь внимания', description: 'Активация и концентрация умственной энергии', duration: 12, category: 'energy', isFavorite: false, level: 'intermediate', moodColor: 'linear-gradient(135deg, rgba(201,150,90,0.5) 0%, rgba(196,120,138,0.25) 100%)' },
+  { id: 'm12', title: 'Поток', description: 'Состояние максимальной продуктивности', duration: 18, category: 'energy', isFavorite: true, level: 'advanced', moodColor: 'linear-gradient(135deg, rgba(201,150,90,0.6) 0%, rgba(106,155,126,0.2) 100%)' },
 ]
 
 export const breathingPractices: BreathingPractice[] = [

@@ -16,6 +16,7 @@ export interface MeditationSession {
   category: string
   isFavorite: boolean
   level: 'beginner' | 'intermediate' | 'advanced'
+  moodColor?: string
 }
 
 export interface BreathingPractice {
