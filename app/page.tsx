@@ -54,8 +54,8 @@ export default function Page() {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
-          <div className="content-shell">
+        <div className="flex-1 overflow-hidden">
+          <div className="content-shell h-full">
             {renderContent()}
           </div>
         </div>

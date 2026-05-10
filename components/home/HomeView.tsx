@@ -45,6 +45,7 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
   const completedDays = weekData.map(v => v > 0)
 
   return (
+    <div className="h-full overflow-y-auto scrollbar-hide">
     <div className="flex flex-col gap-4 px-4 pb-28 md:pb-6 header-pt-home">
       {/* Greeting */}
       <div className="md:hidden">
@@ -193,6 +194,7 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

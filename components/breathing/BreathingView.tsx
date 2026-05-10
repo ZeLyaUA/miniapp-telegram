@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { ChevronLeft, Play, Pause, RotateCcw, Wind, ArrowUp, ArrowDown, RefreshCw, ArrowLeftRight } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
+import { ViewShell } from '@/components/layout/ViewShell'
 import { BreathingCircle } from './BreathingCircle'
 import { breathingPractices } from '@/lib/demo-data'
 import { breathingAudio } from '@/lib/breathingSound'
@@ -81,23 +82,25 @@ export function BreathingView({ onBack }: BreathingViewProps) {
   if (selectedPractice) {
     const isActive = phase !== 'idle'
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex items-center gap-3 p-4 pb-3 header-pt">
-          <button
-            onClick={() => { handleReset(); setSelectedPractice(null) }}
-            className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
-            style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
-          >
-            <ChevronLeft size={18} style={{ color: 'rgba(255,248,235,0.7)' }} />
-          </button>
-          <div>
-            <h1 className="text-white font-bold text-base">{selectedPractice.name}</h1>
-            <p className="label-upper" style={{ marginTop: 2 }}>{selectedPractice.subtitle}</p>
+      <ViewShell
+        header={
+          <div className="flex items-center gap-3 p-4 pb-3 header-pt">
+            <button
+              onClick={() => { handleReset(); setSelectedPractice(null) }}
+              className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
+              style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
+            >
+              <ChevronLeft size={18} style={{ color: 'rgba(255,248,235,0.7)' }} />
+            </button>
+            <div>
+              <h1 className="text-white font-bold text-base">{selectedPractice.name}</h1>
+              <p className="label-upper" style={{ marginTop: 2 }}>{selectedPractice.subtitle}</p>
+            </div>
           </div>
-        </div>
-
+        }
+      >
         {/* Mobile: vertical stack | md: side-by-side */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8">
+        <div className="px-4 pb-28 md:pb-8">
           <div className="flex flex-col md:flex-row md:gap-8 md:items-center md:justify-center md:h-full gap-6 pt-2">
 
             {/* Breathing circle */}
@@ -160,28 +163,30 @@ export function BreathingView({ onBack }: BreathingViewProps) {
             </div>
           </div>
         </div>
-      </div>
+      </ViewShell>
     )
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 p-4 pb-3 header-pt">
-        <button
-          onClick={onBack}
-          className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
-          style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
-        >
-          <ChevronLeft size={18} style={{ color: 'rgba(255,248,235,0.7)' }} />
-        </button>
-        <div>
-          <h1 className="text-white font-bold text-lg">Дыхательные практики</h1>
-          <p className="label-upper" style={{ marginTop: 2 }}>Техника и осознанность</p>
+    <ViewShell
+      header={
+        <div className="flex items-center gap-3 p-4 pb-3 header-pt">
+          <button
+            onClick={onBack}
+            className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
+            style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
+          >
+            <ChevronLeft size={18} style={{ color: 'rgba(255,248,235,0.7)' }} />
+          </button>
+          <div>
+            <h1 className="text-white font-bold text-lg">Дыхательные практики</h1>
+            <p className="label-upper" style={{ marginTop: 2 }}>Техника и осознанность</p>
+          </div>
         </div>
-      </div>
-
+      }
+    >
       {/* Grid: 1-col mobile, 2-col md+ */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8 pt-2">
+      <div className="px-4 pb-28 md:pb-8 pt-2">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {breathingPractices.map(practice => {
             const Icon = iconMap[practice.icon] ?? Wind
@@ -214,7 +219,7 @@ export function BreathingView({ onBack }: BreathingViewProps) {
           })}
         </div>
       </div>
-    </div>
+    </ViewShell>
   )
 }
 

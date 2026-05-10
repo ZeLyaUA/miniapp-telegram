@@ -6,6 +6,7 @@ import { Play, Heart, Clock, ChevronLeft, Flame, Waves, Moon, Zap, Star } from '
 import { SessionPlayer } from './SessionPlayer'
 import { meditationCategories, meditationSessions } from '@/lib/demo-data'
 import { cn } from '@/lib/utils'
+import { ViewShell } from '@/components/layout/ViewShell'
 import type { MeditationSession } from '@/lib/types'
 
 const iconMap: Record<string, React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>> = {
@@ -39,18 +40,21 @@ export function MeditationView({ onBack }: MeditationViewProps) {
 
   if (selectedSession) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex items-center gap-3 p-4 pb-3 header-pt">
-          <button
-            onClick={() => setSelectedSession(null)}
-            className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
-            style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
-          >
-            <ChevronLeft size={18} style={{ color: 'rgba(255,248,235,0.7)' }} />
-          </button>
-          <span style={{ color: 'rgba(255,220,170,0.4)', fontSize: 13 }}>Медитация</span>
-        </div>
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8 flex flex-col gap-4 md:max-w-lg md:mx-auto md:w-full">
+      <ViewShell
+        header={
+          <div className="flex items-center gap-3 p-4 pb-3 header-pt">
+            <button
+              onClick={() => setSelectedSession(null)}
+              className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
+              style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
+            >
+              <ChevronLeft size={18} style={{ color: 'rgba(255,248,235,0.7)' }} />
+            </button>
+            <span style={{ color: 'rgba(255,220,170,0.4)', fontSize: 13 }}>Медитация</span>
+          </div>
+        }
+      >
+        <div className="px-4 pb-28 md:pb-8 flex flex-col gap-4 md:max-w-lg md:mx-auto md:w-full">
           <div
             className="rounded-3xl p-6 flex flex-col gap-4"
             style={{
@@ -85,7 +89,7 @@ export function MeditationView({ onBack }: MeditationViewProps) {
             Начать медитацию
           </button>
         </div>
-      </div>
+      </ViewShell>
     )
   }
 
