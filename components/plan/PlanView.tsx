@@ -26,7 +26,7 @@ export function PlanView({ onBack }: PlanViewProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 p-4 pb-3">
+      <div className="flex items-center gap-3 p-4 pb-3 pt-4 md:pt-20 lg:pt-4">
         <button
           onClick={onBack}
           className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
@@ -40,14 +40,20 @@ export function PlanView({ onBack }: PlanViewProps) {
         </div>
       </div>
 
-      <div className="flex gap-2 px-4 overflow-x-auto scrollbar-hide py-2">
+      {/* Layout: horizontal scroll (mobile) | sidebar (md+) */}
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        {/* Tabs */}
+        <div
+          className="flex gap-2 px-4 overflow-x-auto scrollbar-hide py-2 md:flex-col md:overflow-x-visible md:gap-1 md:px-3 md:py-3 md:w-44 md:flex-shrink-0 md:border-r"
+          style={{ borderColor: 'rgba(255,220,170,0.06)' }}
+        >
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id
           return (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-300"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-300 md:whitespace-normal md:flex-shrink-1 md:w-full md:rounded-xl md:px-3 md:py-2.5"
               style={{
                 borderRadius: '100px',
                 background: isActive ? 'rgba(201,150,90,0.18)' : 'rgba(255,248,235,0.05)',
@@ -60,11 +66,12 @@ export function PlanView({ onBack }: PlanViewProps) {
             </button>
           )
         })}
-      </div>
+        </div>{/* end tabs */}
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8">
         {activeTab === 'goals' && (
-          <div className="flex flex-col gap-3 mt-2">
+          <div className="flex flex-col gap-3 mt-2 max-w-lg">
             {goals.map(goal => (
               <GlassCard key={goal.id} className="p-4">
                 <div className="flex items-start gap-3">
@@ -91,7 +98,7 @@ export function PlanView({ onBack }: PlanViewProps) {
         )}
 
         {activeTab === 'programs' && (
-          <div className="flex flex-col gap-3 mt-2">
+          <div className="flex flex-col gap-3 mt-2 max-w-lg">
             {programs.map(program => (
               <GlassCard key={program.id} accent={program.isActive ? 'amber' : 'none'} className="p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -122,7 +129,7 @@ export function PlanView({ onBack }: PlanViewProps) {
         )}
 
         {activeTab === 'myplan' && (
-          <div className="flex flex-col gap-3 mt-2">
+          <div className="flex flex-col gap-3 mt-2 max-w-lg">
             <GlassCard accent="amber" className="p-4">
               <p className="font-semibold text-sm mb-3" style={{ color: 'var(--amber)' }}>Сегодня</p>
               {[
@@ -148,7 +155,7 @@ export function PlanView({ onBack }: PlanViewProps) {
         )}
 
         {activeTab === 'reminders' && (
-          <div className="flex flex-col gap-3 mt-2">
+          <div className="flex flex-col gap-3 mt-2 max-w-lg">
             {reminders.map((reminder, i) => (
               <GlassCard key={reminder.id} className="p-4">
                 <div className="flex items-center justify-between">
@@ -192,7 +199,8 @@ export function PlanView({ onBack }: PlanViewProps) {
             </div>
           </div>
         )}
-      </div>
+        </div>{/* end content */}
+      </div>{/* end flex row */}
     </div>
   )
 }

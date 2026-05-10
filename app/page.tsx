@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { retrieveLaunchParams } from '@telegram-apps/sdk-react'
 import { BottomNav } from '@/components/layout/BottomNav'
+import { SidebarNav } from '@/components/layout/SidebarNav'
 import { HomeView } from '@/components/home/HomeView'
 import { MeditationView } from '@/components/meditation/MeditationView'
 import { BreathingView } from '@/components/breathing/BreathingView'
@@ -32,21 +33,13 @@ export default function Page() {
     setActiveSection(null)
   }
 
-  const handleSectionSelect = (section: SectionId) => {
-    setActiveSection(section)
-  }
-
-  const handleSectionBack = () => {
-    setActiveSection(null)
-  }
-
   const renderContent = () => {
     if (activeTab === 'home') {
-      if (activeSection === 'meditation') return <MeditationView onBack={handleSectionBack} />
-      if (activeSection === 'breathing') return <BreathingView onBack={handleSectionBack} />
-      if (activeSection === 'plan') return <PlanView onBack={handleSectionBack} />
-      if (activeSection === 'tracker') return <TrackerView onBack={handleSectionBack} />
-      return <HomeView firstName={firstName} onSectionSelect={handleSectionSelect} />
+      if (activeSection === 'meditation') return <MeditationView onBack={() => setActiveSection(null)} />
+      if (activeSection === 'breathing') return <BreathingView onBack={() => setActiveSection(null)} />
+      if (activeSection === 'plan') return <PlanView onBack={() => setActiveSection(null)} />
+      if (activeSection === 'tracker') return <TrackerView onBack={() => setActiveSection(null)} />
+      return <HomeView firstName={firstName} onSectionSelect={setActiveSection} />
     }
     if (activeTab === 'favorites') return <FavoritesView />
     if (activeTab === 'notifications') return <NotificationsView />
@@ -55,12 +48,20 @@ export default function Page() {
   }
 
   return (
-    <main className="flex flex-col" style={{ height: '100dvh' }}>
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto scrollbar-hide">
-          {renderContent()}
+    <main className="flex flex-col lg:flex-row" style={{ height: '100dvh' }}>
+      {/* Desktop sidebar (lg+) */}
+      <SidebarNav activeTab={activeTab} onTabChange={handleTabChange} />
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
+          <div className="content-shell">
+            {renderContent()}
+          </div>
         </div>
       </div>
+
+      {/* Mobile + tablet nav (hidden on lg) */}
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
     </main>
   )

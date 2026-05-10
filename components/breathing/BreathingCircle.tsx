@@ -24,16 +24,22 @@ interface BreathingCircleProps {
   totalSeconds: number
   round: number
   totalRounds: number
+  size?: 'sm' | 'md' | 'lg'
 }
 
-export function BreathingCircle({ phase, secondsLeft, totalSeconds, round, totalRounds }: BreathingCircleProps) {
+export function BreathingCircle({ phase, secondsLeft, totalSeconds, round, totalRounds, size = 'sm' }: BreathingCircleProps) {
   const colors = phaseColors[phase]
   const progress = totalSeconds > 0 ? secondsLeft / totalSeconds : 1
 
+  const sizeMap = { sm: 230, md: 280, lg: 320 }
+  const radiusScale = { sm: 1, md: 1.22, lg: 1.39 }
+  const svgSizeOverride = sizeMap[size]
+  const scale = radiusScale[size]
+
   const rings = [
-    { r: 95, sw: 2, speed: 1.2, opacity: 0.5 },
-    { r: 75, sw: 2.5, speed: 1.0, opacity: 0.7 },
-    { r: 55, sw: 3, speed: 0.8, opacity: 1 },
+    { r: Math.round(95 * scale), sw: 2, speed: 1.2, opacity: 0.5 },
+    { r: Math.round(75 * scale), sw: 2.5, speed: 1.0, opacity: 0.7 },
+    { r: Math.round(55 * scale), sw: 3, speed: 0.8, opacity: 1 },
   ]
 
   const isExpanding = phase === 'inhale'
@@ -46,7 +52,7 @@ export function BreathingCircle({ phase, secondsLeft, totalSeconds, round, total
     return base
   }
 
-  const svgSize = 230
+  const svgSize = svgSizeOverride
 
   return (
     <div className="flex flex-col items-center gap-6">

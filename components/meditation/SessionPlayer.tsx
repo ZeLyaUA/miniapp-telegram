@@ -71,7 +71,7 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
   if (state === 'completed') {
     return (
       <div
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8 gap-6"
+        className="fixed inset-0 z-[100] flex flex-col items-center justify-center px-8 gap-6"
         style={{ background: session.moodColor ?? 'linear-gradient(135deg, rgba(201,150,90,0.3) 0%, rgba(139,117,207,0.2) 100%)', backdropFilter: 'blur(40px)' }}
       >
         <div className="absolute inset-0" style={{ background: 'rgba(9,7,15,0.55)' }} />
@@ -126,7 +126,7 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-[100] flex flex-col"
       style={{ background: 'var(--bg-void)' }}
     >
       {/* Mood background — blurred */}
@@ -141,8 +141,14 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
       />
       <div className="absolute inset-0" style={{ background: 'rgba(9,7,15,0.7)' }} />
 
+      {/* Centered content wrapper for md+ */}
+      <div className="relative flex flex-col h-full w-full md:max-w-lg md:mx-auto">
+
       {/* Controls */}
-      <div className="relative flex items-center justify-between px-5 pt-5">
+      <div
+        className="relative flex items-center justify-between px-5"
+        style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}
+      >
         <button
           onClick={onClose}
           className="w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
@@ -242,7 +248,10 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
       </div>
 
       {/* Progress bar at bottom */}
-      <div className="relative px-6 pb-8">
+      <div
+        className="relative px-6"
+        style={{ paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom) + 16px))' }}
+      >
         <div className="h-0.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
           <div
             className="h-full rounded-full"
@@ -262,6 +271,7 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
           </span>
         </div>
       </div>
+      </div>{/* end centered wrapper */}
     </div>
   )
 }

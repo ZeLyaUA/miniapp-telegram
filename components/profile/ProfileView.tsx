@@ -14,7 +14,7 @@ const menuItems = [
 export function ProfileView() {
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 pb-2">
+      <div className="p-4 pb-2 pt-4 md:pt-20 lg:pt-4">
         <h1 className="text-white font-bold" style={{ fontSize: 24, letterSpacing: '-0.02em' }}>Профиль</h1>
         <p className="label-upper mt-1.5">Настройки и прогресс</p>
       </div>
@@ -24,7 +24,7 @@ export function ProfileView() {
           style={{
             background: 'linear-gradient(135deg, rgba(201,150,90,0.2) 0%, rgba(139,117,207,0.15) 100%)',
             border: '1px solid rgba(255,220,170,0.1)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            boxShadow: 'var(--shadow-card)',
           }}
         >
           <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full" style={{ background: 'radial-gradient(circle, rgba(201,150,90,0.15) 0%, transparent 70%)', filter: 'blur(12px)' }} />

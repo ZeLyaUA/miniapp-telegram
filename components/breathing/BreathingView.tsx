@@ -75,7 +75,7 @@ export function BreathingView({ onBack }: BreathingViewProps) {
     const isActive = phase !== 'idle'
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center gap-3 p-4 pb-3">
+        <div className="flex items-center gap-3 p-4 pb-3 pt-4 md:pt-20 lg:pt-4">
           <button
             onClick={() => { handleReset(); setSelectedPractice(null) }}
             className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
@@ -89,51 +89,68 @@ export function BreathingView({ onBack }: BreathingViewProps) {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 flex flex-col items-center gap-6">
-          <div className="mt-6">
-            <BreathingCircle phase={phase} secondsLeft={secondsLeft} totalSeconds={totalSeconds} round={round} totalRounds={selectedPractice.rounds} />
-          </div>
+        {/* Mobile: vertical stack | md: side-by-side */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8">
+          <div className="flex flex-col md:flex-row md:gap-8 md:items-center md:justify-center md:h-full gap-6 pt-2">
 
-          <GlassCard className="w-full p-4">
-            <p className="text-sm text-center" style={{ color: 'rgba(255,248,235,0.45)' }}>{selectedPractice.description}</p>
-            <div className="flex justify-center gap-3 mt-3 flex-wrap">
-              {selectedPractice.inhale > 0 && <TimingBadge label="Вдох" seconds={selectedPractice.inhale} />}
-              {selectedPractice.holdIn > 0 && <TimingBadge label="Задержка" seconds={selectedPractice.holdIn} />}
-              {selectedPractice.exhale > 0 && <TimingBadge label="Выдох" seconds={selectedPractice.exhale} />}
-              {selectedPractice.holdOut > 0 && <TimingBadge label="Задержка" seconds={selectedPractice.holdOut} />}
+            {/* Breathing circle */}
+            <div className="flex justify-center md:flex-shrink-0">
+              <BreathingCircle
+                phase={phase}
+                secondsLeft={secondsLeft}
+                totalSeconds={totalSeconds}
+                round={round}
+                totalRounds={selectedPractice.rounds}
+                size="md"
+              />
             </div>
-          </GlassCard>
 
-          <div className="flex gap-3 w-full">
-            {isActive && (
-              <button
-                onClick={handleReset}
-                className="flex-1 py-3.5 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300"
-                style={{ background: 'rgba(255,248,235,0.05)', border: '1px solid rgba(255,220,170,0.08)', color: 'rgba(255,248,235,0.4)' }}
-              >
-                <RotateCcw size={15} />
-                Сброс
-              </button>
-            )}
-            <button
-              onClick={() => {
-                if (!isActive) handleStart(selectedPractice)
-                else if (isRunning) setIsRunning(false)
-                else setIsRunning(true)
-              }}
-              className="flex-1 py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-400 active:scale-[0.97]"
-              style={{
-                background: isRunning
-                  ? 'linear-gradient(135deg, rgba(139,117,207,0.4), rgba(139,117,207,0.2))'
-                  : 'linear-gradient(135deg, rgba(201,150,90,0.8), rgba(201,150,90,0.5))',
-                border: `1px solid ${isRunning ? 'rgba(139,117,207,0.3)' : 'rgba(201,150,90,0.3)'}`,
-                boxShadow: isRunning ? 'var(--glow-violet)' : 'var(--glow-amber)',
-                color: isRunning ? 'var(--violet)' : 'rgba(255,240,210,0.95)',
-              }}
-            >
-              {isRunning ? <Pause size={17} /> : <Play size={17} style={{ marginLeft: 1 }} />}
-              {!isActive ? 'Начать' : isRunning ? 'Пауза' : 'Продолжить'}
-            </button>
+            {/* Info + controls */}
+            <div className="flex flex-col gap-4 md:flex-1 md:max-w-xs">
+              <GlassCard className="p-4">
+                <p className="text-sm text-center md:text-left" style={{ color: 'rgba(255,248,235,0.45)' }}>
+                  {selectedPractice.description}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-3 justify-center md:justify-start">
+                  {selectedPractice.inhale > 0 && <TimingBadge label="Вдох" seconds={selectedPractice.inhale} />}
+                  {selectedPractice.holdIn > 0 && <TimingBadge label="Задержка" seconds={selectedPractice.holdIn} />}
+                  {selectedPractice.exhale > 0 && <TimingBadge label="Выдох" seconds={selectedPractice.exhale} />}
+                  {selectedPractice.holdOut > 0 && <TimingBadge label="Задержка" seconds={selectedPractice.holdOut} />}
+                </div>
+              </GlassCard>
+
+              <div className="flex gap-3">
+                {isActive && (
+                  <button
+                    onClick={handleReset}
+                    className="flex-1 py-3.5 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300"
+                    style={{ background: 'rgba(255,248,235,0.05)', border: '1px solid rgba(255,220,170,0.08)', color: 'rgba(255,248,235,0.4)' }}
+                  >
+                    <RotateCcw size={15} />
+                    Сброс
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (!isActive) handleStart(selectedPractice)
+                    else if (isRunning) setIsRunning(false)
+                    else setIsRunning(true)
+                  }}
+                  className="flex-1 py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-400 active:scale-[0.97]"
+                  style={{
+                    background: isRunning
+                      ? 'linear-gradient(135deg, rgba(139,117,207,0.4), rgba(139,117,207,0.2))'
+                      : 'linear-gradient(135deg, rgba(201,150,90,0.8), rgba(201,150,90,0.5))',
+                    border: `1px solid ${isRunning ? 'rgba(139,117,207,0.3)' : 'rgba(201,150,90,0.3)'}`,
+                    boxShadow: isRunning ? 'var(--glow-violet)' : 'var(--glow-amber)',
+                    color: isRunning ? 'var(--violet)' : 'rgba(255,240,210,0.95)',
+                  }}
+                >
+                  {isRunning ? <Pause size={17} /> : <Play size={17} style={{ marginLeft: 1 }} />}
+                  {!isActive ? 'Начать' : isRunning ? 'Пауза' : 'Продолжить'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -142,7 +159,7 @@ export function BreathingView({ onBack }: BreathingViewProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 p-4 pb-3">
+      <div className="flex items-center gap-3 p-4 pb-3 pt-4 md:pt-20 lg:pt-4">
         <button
           onClick={onBack}
           className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
@@ -156,39 +173,39 @@ export function BreathingView({ onBack }: BreathingViewProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 flex flex-col gap-3">
-        {breathingPractices.map(practice => {
-          const Icon = iconMap[practice.icon] ?? Wind
-          return (
-            <button
-              key={practice.id}
-              onClick={() => setSelectedPractice(practice)}
-              className="text-left w-full transition-all duration-400 active:scale-[0.98]"
-            >
-              <GlassCard accent="amber" className="p-4 flex items-center gap-4">
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(201,150,90,0.12)' }}
-                >
-                  <Icon size={22} style={{ color: 'var(--amber)' }} strokeWidth={1.5} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium text-sm">{practice.name}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,220,170,0.4)' }}>{practice.subtitle}</p>
-                  <div className="flex gap-1.5 mt-2 flex-wrap">
-                    {practice.inhale > 0 && <TimingBadge label="Вдох" seconds={practice.inhale} />}
-                    {practice.holdIn > 0 && <TimingBadge label="Задержка" seconds={practice.holdIn} />}
-                    {practice.exhale > 0 && <TimingBadge label="Выдох" seconds={practice.exhale} />}
+      {/* Grid: 1-col mobile, 2-col md+ */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {breathingPractices.map(practice => {
+            const Icon = iconMap[practice.icon] ?? Wind
+            return (
+              <button
+                key={practice.id}
+                onClick={() => setSelectedPractice(practice)}
+                className="text-left w-full transition-all duration-400 active:scale-[0.98]"
+              >
+                <GlassCard accent="amber" className="p-4 flex items-center gap-4 h-full">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(201,150,90,0.12)' }}>
+                    <Icon size={22} style={{ color: 'var(--amber)' }} strokeWidth={1.5} />
                   </div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="font-semibold text-sm" style={{ color: 'var(--amber)' }}>{practice.rounds}</p>
-                  <p className="text-xs" style={{ color: 'rgba(255,220,170,0.3)' }}>кругов</p>
-                </div>
-              </GlassCard>
-            </button>
-          )
-        })}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium text-sm">{practice.name}</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(255,220,170,0.4)' }}>{practice.subtitle}</p>
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                      {practice.inhale > 0 && <TimingBadge label="Вдох" seconds={practice.inhale} />}
+                      {practice.holdIn > 0 && <TimingBadge label="Задержка" seconds={practice.holdIn} />}
+                      {practice.exhale > 0 && <TimingBadge label="Выдох" seconds={practice.exhale} />}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-semibold text-sm" style={{ color: 'var(--amber)' }}>{practice.rounds}</p>
+                    <p className="text-xs" style={{ color: 'rgba(255,220,170,0.3)' }}>кругов</p>
+                  </div>
+                </GlassCard>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
