@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/layout/GlassCard'
 import { BreathingCircle } from './BreathingCircle'
 import { breathingPractices } from '@/lib/demo-data'
 import { breathingAudio } from '@/lib/breathingSound'
+import type { BreathingPhase } from '@/lib/breathingSound'
 import type { BreathingPractice } from '@/lib/types'
 
 type Phase = 'idle' | 'inhale' | 'holdIn' | 'exhale' | 'holdOut'
@@ -33,11 +34,11 @@ export function BreathingView({ onBack }: BreathingViewProps) {
 
   const goToNextPhase = (practice: BreathingPractice, currentPhase: Phase, currentRound: number) => {
     const sequence = ([
-      { phase: 'inhale' as Phase, duration: practice.inhale },
-      { phase: 'holdIn' as Phase, duration: practice.holdIn },
-      { phase: 'exhale' as Phase, duration: practice.exhale },
-      { phase: 'holdOut' as Phase, duration: practice.holdOut },
-    ] as { phase: Phase; duration: number }[]).filter(p => p.duration > 0)
+      { phase: 'inhale' as BreathingPhase, duration: practice.inhale },
+      { phase: 'holdIn' as BreathingPhase, duration: practice.holdIn },
+      { phase: 'exhale' as BreathingPhase, duration: practice.exhale },
+      { phase: 'holdOut' as BreathingPhase, duration: practice.holdOut },
+    ] as { phase: BreathingPhase; duration: number }[]).filter(p => p.duration > 0)
 
     const currentIdx = sequence.findIndex(s => s.phase === currentPhase)
     const nextIdx = currentIdx + 1

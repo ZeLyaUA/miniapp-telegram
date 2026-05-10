@@ -1,4 +1,4 @@
-type BreathingPhase = 'inhale' | 'holdIn' | 'exhale' | 'holdOut'
+export type BreathingPhase = 'inhale' | 'holdIn' | 'exhale' | 'holdOut'
 
 class BreathingAudio {
   private ctx: AudioContext | null = null
