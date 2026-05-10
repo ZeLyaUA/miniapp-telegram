@@ -63,7 +63,7 @@ export function MeditationView({ onBack }: MeditationViewProps) {
   if (selectedSession) {
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center gap-3 p-4 pb-3">
+        <div className="flex items-center gap-3 p-4 pb-3 header-pt">
           <button
             onClick={() => setSelectedSession(null)}
             className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
