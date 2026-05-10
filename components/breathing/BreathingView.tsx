@@ -5,6 +5,7 @@ import { ChevronLeft, Play, Pause, RotateCcw, Wind, ArrowUp, ArrowDown, RefreshC
 import { GlassCard } from '@/components/layout/GlassCard'
 import { BreathingCircle } from './BreathingCircle'
 import { breathingPractices } from '@/lib/demo-data'
+import { breathingAudio } from '@/lib/breathingSound'
 import type { BreathingPractice } from '@/lib/types'
 
 type Phase = 'idle' | 'inhale' | 'holdIn' | 'exhale' | 'holdOut'
@@ -43,13 +44,16 @@ export function BreathingView({ onBack }: BreathingViewProps) {
 
     if (nextIdx >= sequence.length) {
       if (currentRound >= practice.rounds) {
+        breathingAudio.playComplete()
         setPhase('idle'); setSecondsLeft(0); setTotalSeconds(0); setIsRunning(false); setRound(1)
         return
       }
       const next = sequence[0]
+      breathingAudio.playPhase(next.phase)
       setRound(currentRound + 1); setPhase(next.phase); setSecondsLeft(next.duration); setTotalSeconds(next.duration)
     } else {
       const next = sequence[nextIdx]
+      breathingAudio.playPhase(next.phase)
       setPhase(next.phase); setSecondsLeft(next.duration); setTotalSeconds(next.duration)
     }
   }
@@ -67,6 +71,8 @@ export function BreathingView({ onBack }: BreathingViewProps) {
   }, [isRunning, phase, selectedPractice, round])
 
   const handleStart = (practice: BreathingPractice) => {
+    breathingAudio.playStart()
+    setTimeout(() => breathingAudio.playPhase('inhale'), 620)
     setPhase('inhale'); setSecondsLeft(practice.inhale); setTotalSeconds(practice.inhale); setRound(1); setIsRunning(true)
   }
   const handleReset = () => { clearTimer(); setPhase('idle'); setSecondsLeft(0); setTotalSeconds(0); setRound(1); setIsRunning(false) }
