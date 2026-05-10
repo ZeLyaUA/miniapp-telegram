@@ -27,7 +27,7 @@ export function MeditationView({ onBack }: MeditationViewProps) {
   const [selectedCategory, setSelectedCategory] = useState('quick')
   const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(null)
   const [activeSession, setActiveSession] = useState<MeditationSession | null>(null)
-  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, touchHandlers } =
+  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
     useSwipeTabs(meditationCategories, selectedCategory, setSelectedCategory)
 
   const filtered = selectedCategory === 'favorites'
@@ -167,6 +167,7 @@ export function MeditationView({ onBack }: MeditationViewProps) {
 
         {/* Session list — vertical on mobile, 2-col grid on md+ */}
         <div
+          ref={containerRef}
           className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide"
           {...touchHandlers}
         >

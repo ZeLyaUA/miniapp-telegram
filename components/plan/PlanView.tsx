@@ -25,7 +25,7 @@ export function PlanView({ onBack }: PlanViewProps) {
   const [activeTab, setActiveTab] = useState<PlanTab>('goals')
   const [reminderStates, setReminderStates] = useState(reminders.map(r => r.isEnabled))
 
-  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, touchHandlers } =
+  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
     useSwipeTabs(tabs, activeTab, setActiveTab)
 
   return (
@@ -75,7 +75,7 @@ export function PlanView({ onBack }: PlanViewProps) {
         </div>{/* end tabs */}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide" {...touchHandlers}>
+        <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide" {...touchHandlers}>
         <div
           ref={contentRef}
           key={animKey}

@@ -28,7 +28,7 @@ export function TrackerView({ onBack }: TrackerViewProps) {
   const [habitStates, setHabitStates] = useState(habits.map(h => [...h.completedDays]))
   const [selectedDay, setSelectedDay] = useState(10)
 
-  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, touchHandlers } =
+  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
     useSwipeTabs(tabs, activeTab, setActiveTab)
 
   const toggleHabit = (habitIdx: number, dayIdx: number) => {
@@ -84,7 +84,7 @@ export function TrackerView({ onBack }: TrackerViewProps) {
         </div>{/* end tabs */}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide" {...touchHandlers}>
+        <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide" {...touchHandlers}>
         <div
           ref={contentRef}
           key={animKey}

@@ -16,11 +16,22 @@ export function useSwipeTabs<T extends string>(
   const isVertRef = useRef(false)
   const pillsRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const active = pillsRef.current?.querySelector('[data-active="true"]')
     active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   }, [activeTab])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onNativeTouchMove = (e: TouchEvent) => {
+      if (isHorizRef.current) e.preventDefault()
+    }
+    el.addEventListener('touchmove', onNativeTouchMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onNativeTouchMove)
+  }, [])
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartXRef.current = e.touches[0].clientX
@@ -85,6 +96,7 @@ export function useSwipeTabs<T extends string>(
     setSwipeDir,
     pillsRef,
     contentRef,
+    containerRef,
     touchHandlers: {
       onTouchStart: handleTouchStart,
       onTouchMove: handleTouchMove,
