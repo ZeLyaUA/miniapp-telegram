@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
+import { useSwipeTabs } from '@/lib/useSwipeTabs'
 import { Play, Heart, Clock, ChevronLeft, Flame, Waves, Moon, Zap, Star } from 'lucide-react'
 import { SessionPlayer } from './SessionPlayer'
 import { meditationCategories, meditationSessions } from '@/lib/demo-data'
@@ -25,39 +26,8 @@ export function MeditationView({ onBack }: MeditationViewProps) {
   const [selectedCategory, setSelectedCategory] = useState('quick')
   const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(null)
   const [activeSession, setActiveSession] = useState<MeditationSession | null>(null)
-  const [animKey, setAnimKey] = useState(0)
-  const [swipeDir, setSwipeDir] = useState<'left' | 'right' | null>(null)
-
-  const touchStartXRef = useRef(0)
-  const touchStartYRef = useRef(0)
-  const categoryPillsRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const active = categoryPillsRef.current?.querySelector('[data-active="true"]')
-    active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-  }, [selectedCategory])
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0].clientX
-    touchStartYRef.current = e.touches[0].clientY
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartXRef.current
-    const dy = e.changedTouches[0].clientY - touchStartYRef.current
-    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return
-    const idx = meditationCategories.findIndex(c => c.id === selectedCategory)
-    const dir = dx < 0 ? 'left' : 'right'
-    if (dx < 0 && idx < meditationCategories.length - 1) {
-      setSwipeDir(dir)
-      setAnimKey(k => k + 1)
-      setSelectedCategory(meditationCategories[idx + 1].id)
-    } else if (dx > 0 && idx > 0) {
-      setSwipeDir(dir)
-      setAnimKey(k => k + 1)
-      setSelectedCategory(meditationCategories[idx - 1].id)
-    }
-  }
+  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, touchHandlers } =
+    useSwipeTabs(meditationCategories, selectedCategory, setSelectedCategory)
 
   const filtered = selectedCategory === 'favorites'
     ? meditationSessions.filter(s => s.isFavorite)
@@ -139,7 +109,7 @@ export function MeditationView({ onBack }: MeditationViewProps) {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Categories — horizontal scroll on mobile, vertical sidebar on md+ */}
         <div
-          ref={categoryPillsRef}
+          ref={pillsRef}
           className="flex gap-2 px-4 overflow-x-auto scrollbar-hide py-2 md:flex-col md:overflow-x-visible md:overflow-y-auto md:gap-1 md:px-3 md:py-3 md:w-44 md:flex-shrink-0 md:border-r"
           style={{ borderColor: 'rgba(255,220,170,0.06)' }}
         >
@@ -193,23 +163,21 @@ export function MeditationView({ onBack }: MeditationViewProps) {
 
         {/* Session list — vertical on mobile, 2-col grid on md+ */}
         <div
-          className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8 pt-2 md:pt-3"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+          className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide"
+          {...touchHandlers}
         >
+          <div
+            ref={contentRef}
+            key={animKey}
+            className={cn('px-4 pb-28 md:pb-8 pt-2 md:pt-3 min-h-full', animClass)}
+            onAnimationEnd={() => setSwipeDir(null)}
+          >
           {filtered.length === 0 && (
             <div className="py-16 text-center">
               <p style={{ color: 'rgba(255,220,170,0.25)', fontSize: 13 }}>Нет сессий</p>
             </div>
           )}
-          <div
-            key={animKey}
-            className={cn(
-              'grid grid-cols-1 md:grid-cols-2 gap-3',
-              swipeDir === 'left' ? 'swipe-in-right' : swipeDir === 'right' ? 'swipe-in-left' : ''
-            )}
-            onAnimationEnd={() => setSwipeDir(null)}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filtered.map(session => (
               <button
                 key={session.id}
@@ -244,6 +212,7 @@ export function MeditationView({ onBack }: MeditationViewProps) {
                 </div>
               </button>
             ))}
+          </div>
           </div>
         </div>
       </div>

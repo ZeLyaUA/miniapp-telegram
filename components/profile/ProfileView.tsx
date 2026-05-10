@@ -1,14 +1,14 @@
 'use client'
 
-import { User, Flame, Clock, Trophy, ChevronRight } from 'lucide-react'
+import { User, Flame, Clock, Trophy, ChevronRight, Bell, Palette, Globe, Info } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { dailyStats } from '@/lib/demo-data'
 
-const menuItems = [
-  { label: 'Настройки уведомлений', icon: '🔔' },
-  { label: 'Тема приложения', icon: '🎨' },
-  { label: 'Язык', icon: '🌐' },
-  { label: 'О приложении', icon: 'ℹ️' },
+const menuItems: { label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }> }[] = [
+  { label: 'Настройки уведомлений', icon: Bell },
+  { label: 'Тема приложения',       icon: Palette },
+  { label: 'Язык',                  icon: Globe },
+  { label: 'О приложении',          icon: Info },
 ]
 
 export function ProfileView() {
@@ -35,7 +35,8 @@ export function ProfileView() {
             <p className="text-white font-bold text-lg">Пользователь</p>
             <p className="text-sm" style={{ color: 'rgba(255,220,170,0.5)' }}>Начинающий практик</p>
             <div className="inline-block mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium" style={{ background: 'rgba(201,150,90,0.15)', color: 'var(--amber)' }}>
-              🔥 {dailyStats.streak} дней серии
+              <Flame size={12} strokeWidth={1.5} style={{ color: 'var(--amber)' }} />
+              {' '}{dailyStats.streak} дней серии
             </div>
           </div>
         </div>
@@ -58,7 +59,7 @@ export function ProfileView() {
           {menuItems.map(item => (
             <GlassCard key={item.label} className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-lg">{item.icon}</span>
+                <item.icon size={16} strokeWidth={1.5} style={{ color: 'rgba(255,220,170,0.4)' }} />
                 <span className="text-white text-sm">{item.label}</span>
               </div>
               <ChevronRight size={16} style={{ color: 'rgba(255,220,170,0.2)' }} />

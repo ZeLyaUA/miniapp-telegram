@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSwipeTabs } from '@/lib/useSwipeTabs'
 import { ChevronLeft, Target, BookOpen, User, Bell, BarChart3, CheckCircle2, Circle, Clock } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { goals, programs, reminders, dailyStats } from '@/lib/demo-data'
@@ -24,6 +25,9 @@ export function PlanView({ onBack }: PlanViewProps) {
   const [activeTab, setActiveTab] = useState<PlanTab>('goals')
   const [reminderStates, setReminderStates] = useState(reminders.map(r => r.isEnabled))
 
+  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, touchHandlers } =
+    useSwipeTabs(tabs, activeTab, setActiveTab)
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 p-4 pb-3 header-pt">
@@ -44,6 +48,7 @@ export function PlanView({ onBack }: PlanViewProps) {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Tabs */}
         <div
+          ref={pillsRef}
           className="flex gap-2 px-4 overflow-x-auto scrollbar-hide py-2 md:flex-col md:overflow-x-visible md:gap-1 md:px-3 md:py-3 md:w-44 md:flex-shrink-0 md:border-r"
           style={{ borderColor: 'rgba(255,220,170,0.06)' }}
         >
@@ -52,6 +57,7 @@ export function PlanView({ onBack }: PlanViewProps) {
           return (
             <button
               key={id}
+              data-active={isActive}
               onClick={() => setActiveTab(id)}
               className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-300 md:whitespace-normal md:flex-shrink-1 md:w-full md:rounded-xl md:px-3 md:py-2.5"
               style={{
@@ -69,7 +75,13 @@ export function PlanView({ onBack }: PlanViewProps) {
         </div>{/* end tabs */}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide" {...touchHandlers}>
+        <div
+          ref={contentRef}
+          key={animKey}
+          className={cn('px-4 pb-28 md:pb-8 pt-1 min-h-full', animClass)}
+          onAnimationEnd={() => setSwipeDir(null)}
+        >
         {activeTab === 'goals' && (
           <div className="flex flex-col gap-3 mt-2 max-w-lg">
             {goals.map(goal => (
@@ -199,6 +211,7 @@ export function PlanView({ onBack }: PlanViewProps) {
             </div>
           </div>
         )}
+        </div>{/* end content wrapper */}
         </div>{/* end content */}
       </div>{/* end flex row */}
     </div>

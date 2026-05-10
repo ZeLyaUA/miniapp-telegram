@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSwipeTabs } from '@/lib/useSwipeTabs'
 import { ChevronLeft, CalendarDays, Activity, BarChart3, Trophy, Calendar } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { habits, achievements, dailyStats } from '@/lib/demo-data'
@@ -26,6 +27,9 @@ export function TrackerView({ onBack }: TrackerViewProps) {
   const [activeTab, setActiveTab] = useState<TrackerTab>('daily')
   const [habitStates, setHabitStates] = useState(habits.map(h => [...h.completedDays]))
   const [selectedDay, setSelectedDay] = useState(10)
+
+  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, touchHandlers } =
+    useSwipeTabs(tabs, activeTab, setActiveTab)
 
   const toggleHabit = (habitIdx: number, dayIdx: number) => {
     setHabitStates(prev => prev.map((days, hi) =>
@@ -53,6 +57,7 @@ export function TrackerView({ onBack }: TrackerViewProps) {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Tabs */}
         <div
+          ref={pillsRef}
           className="flex gap-2 px-4 overflow-x-auto scrollbar-hide py-2 md:flex-col md:overflow-x-visible md:gap-1 md:px-3 md:py-3 md:w-44 md:flex-shrink-0 md:border-r"
           style={{ borderColor: 'rgba(255,220,170,0.06)' }}
         >
@@ -61,6 +66,7 @@ export function TrackerView({ onBack }: TrackerViewProps) {
           return (
             <button
               key={id}
+              data-active={isActive}
               onClick={() => setActiveTab(id)}
               className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-300 md:whitespace-normal md:flex-shrink-1 md:w-full md:rounded-xl md:px-3 md:py-2.5"
               style={{
@@ -78,7 +84,13 @@ export function TrackerView({ onBack }: TrackerViewProps) {
         </div>{/* end tabs */}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide" {...touchHandlers}>
+        <div
+          ref={contentRef}
+          key={animKey}
+          className={cn('px-4 pb-28 md:pb-8 pt-1 min-h-full', animClass)}
+          onAnimationEnd={() => setSwipeDir(null)}
+        >
         {activeTab === 'daily' && (
           <div className="flex flex-col gap-3 mt-2 max-w-lg">
             <GlassCard accent="violet" className="p-4">
@@ -248,6 +260,7 @@ export function TrackerView({ onBack }: TrackerViewProps) {
             </GlassCard>
           </div>
         )}
+        </div>{/* end content wrapper */}
         </div>{/* end content */}
       </div>{/* end flex row */}
     </div>
