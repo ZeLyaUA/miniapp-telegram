@@ -147,7 +147,7 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
       {/* Controls */}
       <div
         className="relative flex items-center justify-between px-5"
-        style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}
+        style={{ paddingTop: 'max(20px, var(--tg-viewport-safe-area-inset-top, env(safe-area-inset-top)))' }}
       >
         <button
           onClick={onClose}

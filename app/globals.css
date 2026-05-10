@@ -283,6 +283,27 @@
     @apply w-full md:max-w-xl lg:max-w-2xl md:mx-auto;
   }
 
+  /* === View header top padding — accounts for Telegram fullscreen safe area === */
+  .header-pt {
+    padding-top: max(1rem, var(--tg-viewport-safe-area-inset-top, env(safe-area-inset-top)));
+  }
+  @media (min-width: 768px) {
+    .header-pt { padding-top: 5rem; }
+  }
+  @media (min-width: 1024px) {
+    .header-pt { padding-top: 1rem; }
+  }
+
+  .header-pt-home {
+    padding-top: max(1.5rem, var(--tg-viewport-safe-area-inset-top, env(safe-area-inset-top)));
+  }
+  @media (min-width: 768px) {
+    .header-pt-home { padding-top: 5rem; }
+  }
+  @media (min-width: 1024px) {
+    .header-pt-home { padding-top: 2rem; }
+  }
+
   /* === Completion pop === */
   @keyframes pop-in {
     0%   { transform: scale(0.6); opacity: 0; }

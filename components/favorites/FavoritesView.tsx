@@ -8,7 +8,7 @@ const favorites = meditationSessions.filter(s => s.isFavorite)
 export function FavoritesView() {
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 pb-2 pt-4 md:pt-20 lg:pt-4">
+      <div className="p-4 pb-2 header-pt">
         <h1 className="text-white font-bold" style={{ fontSize: 24, letterSpacing: '-0.02em' }}>Избранное</h1>
         <p className="label-upper mt-1.5">Ваши любимые практики</p>
       </div>

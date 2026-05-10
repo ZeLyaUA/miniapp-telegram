@@ -62,7 +62,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
       <nav
         className="fixed left-1/2 z-50 hidden md:flex lg:hidden items-center gap-1 px-3 py-2"
         style={{
-          top: 'max(16px, env(safe-area-inset-top))',
+          top: 'max(16px, var(--tg-viewport-safe-area-inset-top, env(safe-area-inset-top)))',
           transform: 'translateX(-50%)',
           borderRadius: '100px',
           background: 'rgba(18, 12, 30, 0.88)',

@@ -26,7 +26,7 @@ export function PlanView({ onBack }: PlanViewProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 p-4 pb-3 pt-4 md:pt-20 lg:pt-4">
+      <div className="flex items-center gap-3 p-4 pb-3 header-pt">
         <button
           onClick={onBack}
           className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
