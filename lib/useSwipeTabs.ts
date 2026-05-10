@@ -13,6 +13,7 @@ export function useSwipeTabs<T extends string>(
   const touchStartXRef = useRef(0)
   const touchStartYRef = useRef(0)
   const isHorizRef = useRef(false)
+  const isVertRef = useRef(false)
   const pillsRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -25,16 +26,29 @@ export function useSwipeTabs<T extends string>(
     touchStartXRef.current = e.touches[0].clientX
     touchStartYRef.current = e.touches[0].clientY
     isHorizRef.current = false
+    isVertRef.current = false
   }, [])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const dx = e.touches[0].clientX - touchStartXRef.current
     const dy = e.touches[0].clientY - touchStartYRef.current
+
     if (!isHorizRef.current) {
-      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) isHorizRef.current = true
-      else if (Math.abs(dy) > 8) return
-      else return
+      if (isVertRef.current) return
+
+      const absDx = Math.abs(dx)
+      const absDy = Math.abs(dy)
+
+      if (absDx > 12 && absDx > absDy * 1.5) {
+        isHorizRef.current = true
+      } else if (absDy > 8 || (absDy > 0 && absDy >= absDx)) {
+        isVertRef.current = true
+        return
+      } else {
+        return
+      }
     }
+
     if (contentRef.current) {
       contentRef.current.style.transform = `translateX(${dx}px)`
       contentRef.current.style.transition = 'none'
