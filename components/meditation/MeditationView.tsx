@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Play, Heart, Clock, ChevronLeft, Flame, Waves, Moon, Zap, Star } from 'lucide-react'
 import { SessionPlayer } from './SessionPlayer'
 import { meditationCategories, meditationSessions } from '@/lib/demo-data'
@@ -25,6 +25,32 @@ export function MeditationView({ onBack }: MeditationViewProps) {
   const [selectedCategory, setSelectedCategory] = useState('quick')
   const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(null)
   const [activeSession, setActiveSession] = useState<MeditationSession | null>(null)
+
+  const touchStartXRef = useRef(0)
+  const touchStartYRef = useRef(0)
+  const categoryPillsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const active = categoryPillsRef.current?.querySelector('[data-active="true"]')
+    active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  }, [selectedCategory])
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX
+    touchStartYRef.current = e.touches[0].clientY
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartXRef.current
+    const dy = e.changedTouches[0].clientY - touchStartYRef.current
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return
+    const idx = meditationCategories.findIndex(c => c.id === selectedCategory)
+    if (dx < 0 && idx < meditationCategories.length - 1) {
+      setSelectedCategory(meditationCategories[idx + 1].id)
+    } else if (dx > 0 && idx > 0) {
+      setSelectedCategory(meditationCategories[idx - 1].id)
+    }
+  }
 
   const filtered = selectedCategory === 'favorites'
     ? meditationSessions.filter(s => s.isFavorite)
@@ -106,6 +132,7 @@ export function MeditationView({ onBack }: MeditationViewProps) {
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Categories — horizontal scroll on mobile, vertical sidebar on md+ */}
         <div
+          ref={categoryPillsRef}
           className="flex gap-2 px-4 overflow-x-auto scrollbar-hide py-2 md:flex-col md:overflow-x-visible md:overflow-y-auto md:gap-1 md:px-3 md:py-3 md:w-44 md:flex-shrink-0 md:border-r"
           style={{ borderColor: 'rgba(255,220,170,0.06)' }}
         >
@@ -115,6 +142,7 @@ export function MeditationView({ onBack }: MeditationViewProps) {
             return (
               <button
                 key={cat.id}
+                data-active={isActive}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={cn(
                   'flex items-center gap-2 whitespace-nowrap flex-shrink-0 transition-all duration-300',
@@ -142,7 +170,11 @@ export function MeditationView({ onBack }: MeditationViewProps) {
         </div>
 
         {/* Session list — vertical on mobile, 2-col grid on md+ */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8 pt-2 md:pt-3">
+        <div
+          className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8 pt-2 md:pt-3"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {filtered.length === 0 && (
             <div className="py-16 text-center">
               <p style={{ color: 'rgba(255,220,170,0.25)', fontSize: 13 }}>Нет сессий</p>
