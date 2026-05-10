@@ -284,8 +284,16 @@
   }
 
   /* === View header top padding — accounts for Telegram fullscreen safe area === */
+  /* Sums both vars: system notch + Telegram floating close button (both can be active simultaneously) */
   .header-pt {
-    padding-top: max(1rem, var(--tg-viewport-safe-area-inset-top, env(safe-area-inset-top)));
+    padding-top: max(
+      1rem,
+      env(safe-area-inset-top),
+      calc(
+        var(--tg-viewport-safe-area-inset-top, 0px) +
+        var(--tg-viewport-content-safe-area-inset-top, 0px)
+      )
+    );
   }
   @media (min-width: 768px) {
     .header-pt { padding-top: 5rem; }
@@ -295,7 +303,14 @@
   }
 
   .header-pt-home {
-    padding-top: max(1.5rem, var(--tg-viewport-safe-area-inset-top, env(safe-area-inset-top)));
+    padding-top: max(
+      1.5rem,
+      env(safe-area-inset-top),
+      calc(
+        var(--tg-viewport-safe-area-inset-top, 0px) +
+        var(--tg-viewport-content-safe-area-inset-top, 0px)
+      )
+    );
   }
   @media (min-width: 768px) {
     .header-pt-home { padding-top: 5rem; }
