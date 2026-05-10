@@ -25,6 +25,8 @@ export function MeditationView({ onBack }: MeditationViewProps) {
   const [selectedCategory, setSelectedCategory] = useState('quick')
   const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(null)
   const [activeSession, setActiveSession] = useState<MeditationSession | null>(null)
+  const [animKey, setAnimKey] = useState(0)
+  const [swipeDir, setSwipeDir] = useState<'left' | 'right' | null>(null)
 
   const touchStartXRef = useRef(0)
   const touchStartYRef = useRef(0)
@@ -45,9 +47,14 @@ export function MeditationView({ onBack }: MeditationViewProps) {
     const dy = e.changedTouches[0].clientY - touchStartYRef.current
     if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return
     const idx = meditationCategories.findIndex(c => c.id === selectedCategory)
+    const dir = dx < 0 ? 'left' : 'right'
     if (dx < 0 && idx < meditationCategories.length - 1) {
+      setSwipeDir(dir)
+      setAnimKey(k => k + 1)
       setSelectedCategory(meditationCategories[idx + 1].id)
     } else if (dx > 0 && idx > 0) {
+      setSwipeDir(dir)
+      setAnimKey(k => k + 1)
       setSelectedCategory(meditationCategories[idx - 1].id)
     }
   }
@@ -169,6 +176,21 @@ export function MeditationView({ onBack }: MeditationViewProps) {
           })}
         </div>
 
+        {/* Dots indicator — mobile only */}
+        <div className="flex items-center justify-center gap-1.5 py-1.5 md:hidden">
+          {meditationCategories.map(cat => (
+            <div
+              key={cat.id}
+              className="rounded-full transition-all duration-300"
+              style={{
+                width: selectedCategory === cat.id ? 14 : 4,
+                height: 4,
+                background: selectedCategory === cat.id ? 'var(--amber)' : 'rgba(255,220,170,0.2)',
+              }}
+            />
+          ))}
+        </div>
+
         {/* Session list — vertical on mobile, 2-col grid on md+ */}
         <div
           className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 md:pb-8 pt-2 md:pt-3"
@@ -180,7 +202,14 @@ export function MeditationView({ onBack }: MeditationViewProps) {
               <p style={{ color: 'rgba(255,220,170,0.25)', fontSize: 13 }}>Нет сессий</p>
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div
+            key={animKey}
+            className={cn(
+              'grid grid-cols-1 md:grid-cols-2 gap-3',
+              swipeDir === 'left' ? 'swipe-in-right' : swipeDir === 'right' ? 'swipe-in-left' : ''
+            )}
+            onAnimationEnd={() => setSwipeDir(null)}
+          >
             {filtered.map(session => (
               <button
                 key={session.id}

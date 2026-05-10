@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { init, mountViewport, expandViewport, bindViewportCssVars } from '@telegram-apps/sdk-react'
+import { init, mountViewport, expandViewport, bindViewportCssVars, mountSwipeBehavior, disableVerticalSwipes, isSwipeBehaviorSupported } from '@telegram-apps/sdk-react'
 
 export function TelegramProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -13,6 +13,9 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       mountViewport().then(() => {
         bindViewportCssVars()
         expandViewport()
+        if (isSwipeBehaviorSupported()) {
+          mountSwipeBehavior().then(() => disableVerticalSwipes())
+        }
       }).catch(() => {})
       return cleanup
     } catch {

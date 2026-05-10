@@ -319,6 +319,18 @@
     .header-pt-home { padding-top: 2rem; }
   }
 
+  /* === Swipe category slide animations === */
+  @keyframes swipe-in-from-right {
+    from { transform: translateX(32px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  @keyframes swipe-in-from-left {
+    from { transform: translateX(-32px); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
+  }
+  .swipe-in-right { animation: swipe-in-from-right 0.22s ease-out; }
+  .swipe-in-left  { animation: swipe-in-from-left  0.22s ease-out; }
+
   /* === Completion pop === */
   @keyframes pop-in {
     0%   { transform: scale(0.6); opacity: 0; }
