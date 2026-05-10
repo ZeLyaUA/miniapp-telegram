@@ -14,7 +14,8 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
         bindViewportCssVars()
         expandViewport()
         if (isSwipeBehaviorSupported()) {
-          mountSwipeBehavior().then(() => disableVerticalSwipes())
+          mountSwipeBehavior()
+          disableVerticalSwipes()
         }
       }).catch(() => {})
       return cleanup
