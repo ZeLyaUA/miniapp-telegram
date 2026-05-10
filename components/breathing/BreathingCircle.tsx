@@ -2,6 +2,87 @@
 
 type Phase = 'idle' | 'inhale' | 'holdIn' | 'exhale' | 'holdOut'
 
+const PARTICLE_COUNT = 8
+
+function AirParticles({ phase, outerR, innerR }: { phase: Phase; outerR: number; innerR: number }) {
+  if (phase === 'idle') return null
+
+  const midR = Math.round((outerR + innerR) / 2)
+  const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+    angleDeg: (i / PARTICLE_COUNT) * 360,
+    delay: (i / PARTICLE_COUNT) * 1.4,
+  }))
+
+  if (phase === 'inhale' || phase === 'exhale') {
+    const isIn = phase === 'inhale'
+    const color = isIn ? 'var(--amber)' : 'rgba(139,117,207,0.9)'
+    const glow  = isIn ? '0 0 8px var(--amber)' : '0 0 8px rgba(139,117,207,0.7)'
+    const kf    = isIn ? 'air-inhale 2s' : 'air-exhale 2s'
+
+    return (
+      <>
+        {particles.map((p, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: 0, height: 0,
+              transform: `rotate(${p.angleDeg}deg)`,
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                left: -2.5, top: -2.5,
+                width: 5, height: 5,
+                borderRadius: '50%',
+                background: color,
+                boxShadow: glow,
+                ['--outer-y' as string]: `-${outerR}px`,
+                ['--inner-y' as string]: `-${innerR}px`,
+                animation: `${kf} ${p.delay}s infinite ease-${isIn ? 'in' : 'out'}`,
+              }}
+            />
+          </div>
+        ))}
+      </>
+    )
+  }
+
+  // holdIn / holdOut — orbit
+  const isHoldIn  = phase === 'holdIn'
+  const orbitDur  = isHoldIn ? 5 : 9
+  const orbitColor = isHoldIn ? 'rgba(255,248,235,0.75)' : 'rgba(139,117,207,0.45)'
+  const orbitGlow  = isHoldIn ? '0 0 6px rgba(255,248,235,0.55)' : '0 0 6px rgba(139,117,207,0.35)'
+
+  return (
+    <div
+      style={{
+        position: 'absolute', left: '50%', top: '50%',
+        width: 0, height: 0,
+        animation: `air-orbit ${orbitDur}s linear infinite`,
+        pointerEvents: 'none',
+      }}
+    >
+      {particles.map((p, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: -2, top: -2,
+            width: 4, height: 4,
+            borderRadius: '50%',
+            background: orbitColor,
+            boxShadow: orbitGlow,
+            transform: `rotate(${p.angleDeg}deg) translateY(-${midR}px)`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 const phaseLabel: Record<Phase, string> = {
   idle: 'Готов',
   inhale: 'Вдох',
@@ -53,6 +134,8 @@ export function BreathingCircle({ phase, secondsLeft, totalSeconds, round, total
   }
 
   const svgSize = svgSizeOverride
+  const outerR  = rings[0].r
+  const innerR  = rings[2].r
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -115,6 +198,9 @@ export function BreathingCircle({ phase, secondsLeft, totalSeconds, round, total
             )
           })}
         </svg>
+
+        {/* Air circulation particles */}
+        <AirParticles key={phase} phase={phase} outerR={outerR} innerR={innerR} />
 
         {/* Center content */}
         <div className="relative flex flex-col items-center justify-center gap-1">
