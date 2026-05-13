@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { X, Pause, Play } from 'lucide-react'
-import { dailyStats } from '@/lib/demo-data'
 import type { MeditationSession } from '@/lib/types'
 
 const guidance = [
@@ -20,6 +19,8 @@ type PlayerState = 'playing' | 'paused' | 'completed'
 interface SessionPlayerProps {
   session: MeditationSession
   onClose: () => void
+  onComplete?: (sessionId: string, sessionTitle: string, durationMinutes: number, completedFull: boolean, actualMinutes: number) => void
+  streak?: number
 }
 
 function formatTime(seconds: number): string {
@@ -28,7 +29,7 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
+export function SessionPlayer({ session, onClose, onComplete, streak = 0 }: SessionPlayerProps) {
   const totalSeconds = session.duration * 60
   const [state, setState] = useState<PlayerState>('playing')
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds)
@@ -36,6 +37,8 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
   const [guidanceKey, setGuidanceKey] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const guidanceRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const startedAtRef = useRef<number>(Date.now())
+  const completedRef = useRef(false)
 
   const clear = () => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -48,6 +51,11 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
     timerRef.current = setInterval(() => {
       setSecondsLeft(prev => {
         if (prev <= 1) {
+          if (!completedRef.current) {
+            completedRef.current = true
+            const actualMinutes = (Date.now() - startedAtRef.current) / 60000
+            onComplete?.(session.id, session.title, session.duration, true, actualMinutes)
+          }
           setState('completed')
           return 0
         }
@@ -104,7 +112,7 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
               ))}
             </div>
             <p style={{ color: 'rgba(255,220,170,0.5)', fontSize: 13 }}>
-              🔥 Серия: {dailyStats.streak + 1} дней
+              🔥 Серия: {streak + 1} дней
             </p>
           </div>
 
@@ -150,7 +158,14 @@ export function SessionPlayer({ session, onClose }: SessionPlayerProps) {
         style={{ paddingTop: 'max(20px, var(--tg-viewport-safe-area-inset-top, env(safe-area-inset-top)))' }}
       >
         <button
-          onClick={onClose}
+          onClick={() => {
+            if (!completedRef.current) {
+              completedRef.current = true
+              const actualMinutes = (Date.now() - startedAtRef.current) / 60000
+              onComplete?.(session.id, session.title, session.duration, false, actualMinutes)
+            }
+            onClose()
+          }}
           className="w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
           style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
         >

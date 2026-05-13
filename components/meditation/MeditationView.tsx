@@ -21,21 +21,35 @@ const levelLabel: Record<MeditationSession['level'], string> = {
 
 interface MeditationViewProps {
   onBack: () => void
+  initialSessionId?: string
+  onSessionComplete?: (sessionId: string, sessionTitle: string, durationMinutes: number, completedFull: boolean, actualMinutes: number) => void
+  streak?: number
+  favoriteIds?: string[]
 }
 
-export function MeditationView({ onBack }: MeditationViewProps) {
+export function MeditationView({ onBack, initialSessionId, onSessionComplete, streak = 0, favoriteIds }: MeditationViewProps) {
   const [selectedCategory, setSelectedCategory] = useState('quick')
-  const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(null)
+  const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(
+    initialSessionId ? (meditationSessions.find(s => s.id === initialSessionId) ?? null) : null
+  )
   const [activeSession, setActiveSession] = useState<MeditationSession | null>(null)
   const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
     useSwipeTabs(meditationCategories, selectedCategory, setSelectedCategory)
 
+  const effectiveFavorites = favoriteIds ?? meditationSessions.filter(s => s.isFavorite).map(s => s.id)
   const filtered = selectedCategory === 'favorites'
-    ? meditationSessions.filter(s => s.isFavorite)
+    ? meditationSessions.filter(s => effectiveFavorites.includes(s.id))
     : meditationSessions.filter(s => s.category === selectedCategory)
 
   if (activeSession) {
-    return <SessionPlayer session={activeSession} onClose={() => setActiveSession(null)} />
+    return (
+      <SessionPlayer
+        session={activeSession}
+        onClose={() => setActiveSession(null)}
+        onComplete={onSessionComplete}
+        streak={streak}
+      />
+    )
   }
 
   if (selectedSession) {

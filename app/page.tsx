@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { retrieveLaunchParams } from '@telegram-apps/sdk-react'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { SidebarNav } from '@/components/layout/SidebarNav'
@@ -12,21 +12,34 @@ import { TrackerView } from '@/components/tracker/TrackerView'
 import { FavoritesView } from '@/components/favorites/FavoritesView'
 import { NotificationsView } from '@/components/notifications/NotificationsView'
 import { ProfileView } from '@/components/profile/ProfileView'
+import { DayCardView } from '@/components/daycard/DayCardView'
+import { useWellness, createEvent, syncEventToSupabase, syncStateToSupabase } from '@/lib/store/WellnessContext'
+import { getStreakDays, computeAllSnapshots } from '@/lib/store/analytics'
 import type { TabId, SectionId } from '@/lib/types'
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
   const [activeSection, setActiveSection] = useState<SectionId | null>(null)
+  const [initialItemId, setInitialItemId] = useState<string | null>(null)
   const [firstName, setFirstName] = useState<string | null>(null)
+  const { state, dispatch } = useWellness()
 
   useEffect(() => {
     try {
       const lp = retrieveLaunchParams()
       setFirstName(lp.tgWebAppData?.user?.first_name ?? null)
-    } catch {
-      // вне Telegram
-    }
+    } catch { /* вне Telegram */ }
   }, [])
+
+  const logEvent = useCallback((eventPayload: Parameters<typeof createEvent>[0]) => {
+    const event = createEvent(eventPayload)
+    dispatch({ type: 'LOG_EVENT', event })
+    syncEventToSupabase(state.userId, event)
+    syncStateToSupabase(state.userId, { ...state, events: [...state.events, event] })
+  }, [dispatch, state])
+
+  const snapshots = computeAllSnapshots(state.events, state.assessmentsByDay)
+  const streak = getStreakDays(snapshots, state.todayKey)
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab)
@@ -35,11 +48,41 @@ export default function Page() {
 
   const renderContent = () => {
     if (activeTab === 'home') {
-      if (activeSection === 'meditation') return <MeditationView onBack={() => setActiveSection(null)} />
-      if (activeSection === 'breathing') return <BreathingView onBack={() => setActiveSection(null)} />
-      if (activeSection === 'plan') return <PlanView onBack={() => setActiveSection(null)} />
+      if (activeSection === 'daycard') return <DayCardView onBack={() => setActiveSection(null)} />
+      if (activeSection === 'meditation') return (
+        <MeditationView
+          onBack={() => { setInitialItemId(null); setActiveSection(null) }}
+          initialSessionId={initialItemId ?? undefined}
+          streak={streak}
+          favoriteIds={state.favoriteMeditationIds}
+          onSessionComplete={(sessionId, sessionTitle, durationMinutes, completedFull, actualMinutes) => {
+            logEvent({ type: 'meditation_session_completed', sessionId, sessionTitle, durationMinutes, completedFull, actualDurationMinutes: actualMinutes })
+          }}
+        />
+      )
+      if (activeSection === 'breathing') return (
+        <BreathingView
+          onBack={() => { setInitialItemId(null); setActiveSection(null) }}
+          initialPracticeId={initialItemId ?? undefined}
+          onSessionComplete={(practiceId, practiceName, rounds, durationSeconds) => {
+            logEvent({ type: 'breathing_session_completed', practiceId, practiceName, rounds, durationSeconds })
+          }}
+        />
+      )
+      if (activeSection === 'plan') return <PlanView onBack={() => setActiveSection(null)} onNavigate={(section, itemId) => { setInitialItemId(itemId ?? null); setActiveSection(section) }} />
       if (activeSection === 'tracker') return <TrackerView onBack={() => setActiveSection(null)} />
-      return <HomeView firstName={firstName} onSectionSelect={setActiveSection} />
+      return (
+        <HomeView
+          firstName={firstName}
+          onSectionSelect={setActiveSection}
+          streak={streak}
+          meditationMinutesToday={snapshots[state.todayKey]?.meditationMinutes ?? 0}
+          breathingSessionsToday={snapshots[state.todayKey]?.breathingSessionCount ?? 0}
+          weekMinutes={Object.entries(snapshots)
+            .filter(([k]) => k >= state.todayKey.slice(0, 8) + '01' || true)
+            .slice(-7).reduce((s, [, snap]) => s + snap.meditationMinutes + snap.breathingMinutes, 0)}
+        />
+      )
     }
     if (activeTab === 'favorites') return <FavoritesView />
     if (activeTab === 'notifications') return <NotificationsView />

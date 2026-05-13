@@ -1,8 +1,7 @@
 'use client'
 
-import { Brain, Wind, CalendarCheck, BarChart3, Play, Flame, Clock } from 'lucide-react'
+import { Brain, Wind, CalendarCheck, BarChart3, Flame, Clock, ChevronRight } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
-import { dailyStats, meditationSessions } from '@/lib/demo-data'
 import type { SectionId } from '@/lib/types'
 
 const quickActions: { id: SectionId; label: string; icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[] = [
@@ -20,29 +19,24 @@ function getGreeting(): string {
   return 'Доброй ночи'
 }
 
-function getFeaturedSession() {
-  const h = new Date().getHours()
-  if (h >= 5 && h < 11)  return meditationSessions.find(s => s.id === 'm1')!
-  if (h >= 11 && h < 17) return meditationSessions.find(s => s.id === 'm11')!
-  if (h >= 17 && h < 21) return meditationSessions.find(s => s.id === 'm7')!
-  return meditationSessions.find(s => s.id === 'm9')!
-}
-
-const levelLabel: Record<string, string> = {
-  beginner: 'Начинающий',
-  intermediate: 'Средний',
-  advanced: 'Продвинутый',
+function getDayCard() {
+  const now = new Date()
+  const date = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+  const weekday = now.toLocaleDateString('ru-RU', { weekday: 'long' })
+  return { date, weekday }
 }
 
 interface HomeViewProps {
   firstName: string | null
   onSectionSelect: (section: SectionId) => void
+  streak?: number
+  meditationMinutesToday?: number
+  breathingSessionsToday?: number
+  weekMinutes?: number
 }
 
-export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
-  const { streak, weekData, meditationMinutes, breathingSessions } = dailyStats
-  const featured = getFeaturedSession()
-  const completedDays = weekData.map(v => v > 0)
+export function HomeView({ firstName, onSectionSelect, streak = 0, meditationMinutesToday = 0, breathingSessionsToday = 0, weekMinutes = 0 }: HomeViewProps) {
+  const { date, weekday } = getDayCard()
 
   return (
     <div className="h-full overflow-y-auto scrollbar-hide">
@@ -74,18 +68,17 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
 
         {/* Left column: featured card + quick access */}
         <div className="flex flex-col gap-4 lg:w-3/5">
-          {/* Featured practice card */}
+          {/* Day card */}
           <button
-            onClick={() => onSectionSelect('meditation')}
+            onClick={() => onSectionSelect('daycard')}
             className="text-left w-full transition-all duration-500 active:scale-[0.98] active:opacity-90"
           >
             <div
-              className="relative overflow-hidden rounded-3xl p-6 flex flex-col gap-4"
+              className="relative overflow-hidden rounded-3xl p-4 flex flex-col gap-2"
               style={{
-                background: featured.moodColor ?? 'linear-gradient(135deg, rgba(201,150,90,0.3) 0%, rgba(139,117,207,0.2) 100%)',
+                background: 'linear-gradient(135deg, rgba(201,150,90,0.2) 0%, rgba(139,117,207,0.15) 100%)',
                 border: '1px solid rgba(255,220,170,0.1)',
                 boxShadow: 'var(--shadow-card-lg), inset 0 1px 0 rgba(255,255,255,0.06)',
-                minHeight: 200,
               }}
             >
               <div
@@ -94,26 +87,21 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
               />
               <div>
                 <span
-                  className="inline-block text-xs font-medium px-3 py-1 rounded-full mb-3"
+                  className="inline-block text-xs font-medium px-3 py-1 rounded-full mb-2"
                   style={{ background: 'rgba(255,220,170,0.1)', color: 'rgba(255,220,170,0.7)', letterSpacing: '0.06em' }}
                 >
-                  РЕКОМЕНДУЕТСЯ СЕЙЧАС
+                  КАРТА ДНЯ
                 </span>
-                <h2 className="text-white font-bold text-xl leading-tight">{featured.title}</h2>
-                <p className="text-white/50 text-sm mt-1">{featured.description}</p>
+                <h2 className="text-white font-bold text-lg leading-tight">{date}</h2>
+                <p className="text-white/50 text-sm capitalize">{weekday}</p>
               </div>
-              <div className="flex items-center justify-between mt-auto">
-                <div className="flex gap-3 text-xs" style={{ color: 'rgba(255,220,170,0.5)' }}>
-                  <span>{featured.duration} мин</span>
-                  <span>·</span>
-                  <span>{levelLabel[featured.level]}</span>
-                </div>
+              <div className="flex items-center justify-end mt-1">
                 <div
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full font-medium text-sm"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full font-medium text-sm"
                   style={{ background: 'rgba(255,220,170,0.15)', border: '1px solid rgba(255,220,170,0.2)', color: 'rgba(255,220,170,0.9)' }}
                 >
-                  <Play size={14} style={{ marginLeft: 1 }} />
-                  Начать
+                  Открыть
+                  <ChevronRight size={14} />
                 </div>
               </div>
             </div>
@@ -153,9 +141,9 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
           <div className="grid grid-cols-4 gap-2">
             {[
               { icon: Flame, label: 'Серия', value: `${streak}`, unit: 'дней', color: 'var(--amber)' },
-              { icon: Clock, label: 'Сегодня', value: `${meditationMinutes}`, unit: 'мин', color: 'var(--violet)' },
-              { icon: Wind, label: 'Дыхание', value: `${breathingSessions}`, unit: 'сессий', color: 'var(--violet)' },
-              { icon: Brain, label: 'Неделя', value: `${weekData.reduce((a, b) => a + b, 0)}`, unit: 'мин', color: 'var(--amber)' },
+              { icon: Clock, label: 'Сегодня', value: `${meditationMinutesToday}`, unit: 'мин', color: 'var(--violet)' },
+              { icon: Wind, label: 'Дыхание', value: `${breathingSessionsToday}`, unit: 'сессий', color: 'var(--violet)' },
+              { icon: Brain, label: 'Неделя', value: `${weekMinutes}`, unit: 'мин', color: 'var(--amber)' },
             ].map(({ icon: Icon, label, value, unit, color }) => (
               <div
                 key={label}

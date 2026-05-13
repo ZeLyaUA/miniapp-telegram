@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ChevronLeft, Play, Pause, RotateCcw, Wind, ArrowUp, ArrowDown, RefreshCw, ArrowLeftRight } from 'lucide-react'
+import { ChevronLeft, Play, Pause, RotateCcw, Wind, ArrowUp, ArrowDown, RefreshCw, ArrowLeftRight, Film, X } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { ViewShell } from '@/components/layout/ViewShell'
 import { BreathingCircle } from './BreathingCircle'
@@ -18,16 +18,22 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; strokeWidth?:
 
 interface BreathingViewProps {
   onBack: () => void
+  initialPracticeId?: string
+  onSessionComplete?: (practiceId: string, practiceName: string, rounds: number, durationSeconds: number) => void
 }
 
-export function BreathingView({ onBack }: BreathingViewProps) {
-  const [selectedPractice, setSelectedPractice] = useState<BreathingPractice | null>(null)
+export function BreathingView({ onBack, initialPracticeId, onSessionComplete }: BreathingViewProps) {
+  const [selectedPractice, setSelectedPractice] = useState<BreathingPractice | null>(
+    initialPracticeId ? (breathingPractices.find(p => p.id === initialPracticeId) ?? null) : null
+  )
+  const [videoPractice, setVideoPractice] = useState<BreathingPractice | null>(null)
   const [phase, setPhase] = useState<Phase>('idle')
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [totalSeconds, setTotalSeconds] = useState(0)
   const [round, setRound] = useState(1)
   const [isRunning, setIsRunning] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const startedAtRef = useRef<number>(0)
 
   const clearTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -47,6 +53,8 @@ export function BreathingView({ onBack }: BreathingViewProps) {
     if (nextIdx >= sequence.length) {
       if (currentRound >= practice.rounds) {
         breathingAudio.playComplete()
+        const durationSeconds = Math.round((Date.now() - startedAtRef.current) / 1000)
+        onSessionComplete?.(practice.id, practice.name, currentRound, durationSeconds)
         setPhase('idle'); setSecondsLeft(0); setTotalSeconds(0); setIsRunning(false); setRound(1)
         return
       }
@@ -73,6 +81,7 @@ export function BreathingView({ onBack }: BreathingViewProps) {
   }, [isRunning, phase, selectedPractice, round])
 
   const handleStart = (practice: BreathingPractice) => {
+    startedAtRef.current = Date.now()
     breathingAudio.playStart()
     setTimeout(() => breathingAudio.playPhase('inhale'), 620)
     setPhase('inhale'); setSecondsLeft(practice.inhale); setTotalSeconds(practice.inhale); setRound(1); setIsRunning(true)
@@ -82,6 +91,8 @@ export function BreathingView({ onBack }: BreathingViewProps) {
   if (selectedPractice) {
     const isActive = phase !== 'idle'
     return (
+      <>
+      {videoPractice && <VideoModal practice={videoPractice} onClose={() => setVideoPractice(null)} />}
       <ViewShell
         header={
           <div className="flex items-center gap-3 p-4 pb-3 header-pt">
@@ -129,6 +140,18 @@ export function BreathingView({ onBack }: BreathingViewProps) {
                 </div>
               </GlassCard>
 
+              {/* Video demo button */}
+              {selectedPractice.howTo && selectedPractice.howTo.length > 0 && (
+                <button
+                  onClick={() => setVideoPractice(selectedPractice)}
+                  className="flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-medium transition-all duration-300 active:scale-[0.97]"
+                  style={{ background: 'rgba(255,248,235,0.04)', border: '1px solid rgba(255,220,170,0.08)', color: 'rgba(255,220,170,0.45)' }}
+                >
+                  <Film size={15} strokeWidth={1.5} />
+                  Видео-инструкция
+                </button>
+              )}
+
               <div className="flex gap-3">
                 {isActive && (
                   <button
@@ -164,10 +187,12 @@ export function BreathingView({ onBack }: BreathingViewProps) {
           </div>
         </div>
       </ViewShell>
+      </>
     )
   }
 
   return (
+    <>
     <ViewShell
       header={
         <div className="flex items-center gap-3 p-4 pb-3 header-pt">
@@ -220,6 +245,7 @@ export function BreathingView({ onBack }: BreathingViewProps) {
         </div>
       </div>
     </ViewShell>
+    </>
   )
 }
 
@@ -231,5 +257,76 @@ function TimingBadge({ label, seconds }: { label: string; seconds: number }) {
     >
       {label} {seconds}с
     </span>
+  )
+}
+
+function VideoModal({ practice, onClose }: { practice: BreathingPractice; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-3xl overflow-hidden"
+        style={{ background: 'rgba(18,12,30,0.97)', border: '1px solid rgba(255,220,170,0.1)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <div>
+            <p className="text-white font-bold text-base">{practice.name}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,220,170,0.4)' }}>{practice.subtitle}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
+            style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
+          >
+            <X size={15} style={{ color: 'rgba(255,248,235,0.6)' }} />
+          </button>
+        </div>
+
+        {/* Video placeholder */}
+        <div
+          className="mx-4 rounded-2xl flex flex-col items-center justify-center"
+          style={{
+            height: 176,
+            background: 'linear-gradient(135deg, rgba(201,150,90,0.1) 0%, rgba(139,117,207,0.1) 100%)',
+            border: '1px solid rgba(255,220,170,0.08)',
+          }}
+        >
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center mb-2"
+            style={{ background: 'rgba(201,150,90,0.18)', border: '1px solid rgba(201,150,90,0.25)', boxShadow: 'var(--glow-amber)' }}
+          >
+            <Play size={22} style={{ color: 'var(--amber)', marginLeft: 3 }} />
+          </div>
+          <p className="text-xs" style={{ color: 'rgba(255,220,170,0.4)' }}>Видео скоро будет доступно</p>
+        </div>
+
+        {/* Steps */}
+        {practice.howTo && practice.howTo.length > 0 && (
+          <div className="px-5 pt-4 pb-6">
+            <p className="text-xs font-semibold mb-3" style={{ color: 'rgba(255,220,170,0.5)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Как выполнять
+            </p>
+            <ol className="flex flex-col gap-2.5">
+              {practice.howTo.map((step, i) => (
+                <li key={i} className="flex gap-3">
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5"
+                    style={{ background: 'rgba(201,150,90,0.15)', color: 'var(--amber)', border: '1px solid rgba(201,150,90,0.2)' }}
+                  >
+                    {i + 1}
+                  </span>
+                  <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,248,235,0.6)' }}>{step}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

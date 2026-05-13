@@ -8,6 +8,8 @@ import type {
   Habit,
   Achievement,
   DailyStats,
+  DayBlock,
+  WeekTheme,
 } from './types'
 
 export const meditationCategories: MeditationCategory[] = [
@@ -46,6 +48,12 @@ export const breathingPractices: BreathingPractice[] = [
     rounds: 10,
     description: 'Наполните лёгкие полностью — сначала живот, потом грудь. Естественный ритм дыхания.',
     icon: 'Wind',
+    howTo: [
+      'Сядьте удобно или лягте на спину, закройте глаза.',
+      'На вдохе сначала наполните живот воздухом, затем расширьте грудную клетку.',
+      'На выдохе медленно выпустите воздух — сначала из груди, затем из живота.',
+      'Держите плечи расслабленными, дышите плавно без пауз.',
+    ],
   },
   {
     id: 'b2',
@@ -58,6 +66,12 @@ export const breathingPractices: BreathingPractice[] = [
     rounds: 8,
     description: 'Техника 4-7-8. Успокаивает нервную систему и снижает тревожность.',
     icon: 'ArrowUp',
+    howTo: [
+      'Сядьте прямо, кончик языка касается нёба за верхними зубами.',
+      'Выдохните полностью через рот со звуком «фух».',
+      'Вдохните через нос на 4 счёта, задержите дыхание на 7 счётов.',
+      'Выдохните через рот со звуком «фух» на 8 счётов — это один цикл.',
+    ],
   },
   {
     id: 'b3',
@@ -70,6 +84,12 @@ export const breathingPractices: BreathingPractice[] = [
     rounds: 8,
     description: 'Активирует парасимпатическую нервную систему. Эффективна при стрессе.',
     icon: 'ArrowDown',
+    howTo: [
+      'Сядьте удобно, выпрямите спину, расслабьте плечи.',
+      'Сделайте спокойный вдох через нос на 4 счёта.',
+      'Медленно выдохните через нос или рот на 6 счётов.',
+      'После выдоха задержите дыхание на 4 счёта, затем повторите цикл.',
+    ],
   },
   {
     id: 'b4',
@@ -82,6 +102,12 @@ export const breathingPractices: BreathingPractice[] = [
     rounds: 20,
     description: 'Быстрые выдохи через нос. Очищает лёгкие и активирует энергию.',
     icon: 'RefreshCw',
+    howTo: [
+      'Сядьте со скрещёнными ногами или на стул, держите спину прямо.',
+      'Сделайте глубокий вдох, затем начните серию резких коротких выдохов через нос.',
+      'Каждый выдох — активное сокращение живота, вдох происходит пассивно.',
+      'Выполняйте 20 циклов в темпе 1–2 выдоха в секунду, затем сделайте паузу.',
+    ],
   },
   {
     id: 'b5',
@@ -94,6 +120,12 @@ export const breathingPractices: BreathingPractice[] = [
     rounds: 10,
     description: 'Нади шодхана. Баланс между левым и правым полушариями мозга.',
     icon: 'ArrowLeftRight',
+    howTo: [
+      'Сядьте удобно, поднесите правую руку к носу: большой палец закрывает правую ноздрю, безымянный — левую.',
+      'Закройте правую ноздрю и вдохните через левую на 4 счёта.',
+      'Закройте обе ноздри, задержите на 2 счёта, затем откройте правую и выдохните на 4 счёта.',
+      'Вдохните через правую, задержите, переключитесь и выдохните через левую — это один цикл.',
+    ],
   },
 ]
 
@@ -104,7 +136,72 @@ export const goals: Goal[] = [
 ]
 
 export const programs: Program[] = [
-  { id: 'p1', title: 'Начало пути', duration: '7 дней', sessions: 7, description: 'Введение в медитацию для начинающих', isActive: true },
+  {
+    id: 'p1',
+    title: 'Начало пути',
+    duration: '7 дней',
+    sessions: 7,
+    description: 'Введение в медитацию для начинающих',
+    isActive: true,
+    days: [
+      {
+        day: 1,
+        title: 'Первое дыхание',
+        steps: [
+          { type: 'breathing', refId: 'b1', title: 'Полное дыхание', duration: '5 мин' },
+          { type: 'meditation', refId: 'm1', title: 'Утренняя ясность', duration: '7 мин' },
+        ],
+      },
+      {
+        day: 2,
+        title: 'Успокоение',
+        steps: [
+          { type: 'breathing', refId: 'b2', title: 'Задержка на вдохе', duration: '8 мин' },
+          { type: 'meditation', refId: 'm2', title: 'Быстрое спокойствие', duration: '5 мин' },
+        ],
+      },
+      {
+        day: 3,
+        title: 'Осознанность',
+        steps: [
+          { type: 'breathing', refId: 'b1', title: 'Полное дыхание', duration: '5 мин' },
+          { type: 'meditation', refId: 'm3', title: 'Дыхание осознанности', duration: '10 мин' },
+        ],
+      },
+      {
+        day: 4,
+        title: 'Антистресс',
+        steps: [
+          { type: 'breathing', refId: 'b3', title: 'Задержка на выдохе', duration: '7 мин' },
+          { type: 'meditation', refId: 'm7', title: 'Растворение тревоги', duration: '15 мин' },
+        ],
+      },
+      {
+        day: 5,
+        title: 'Энергия',
+        steps: [
+          { type: 'breathing', refId: 'b4', title: 'Капалабхати', duration: '5 мин' },
+          { type: 'meditation', refId: 'm11', title: 'Огонь внимания', duration: '12 мин' },
+        ],
+      },
+      {
+        day: 6,
+        title: 'Баланс',
+        steps: [
+          { type: 'breathing', refId: 'b5', title: 'Попеременное дыхание', duration: '8 мин' },
+          { type: 'meditation', refId: 'm8', title: 'Якорь спокойствия', duration: '10 мин' },
+        ],
+      },
+      {
+        day: 7,
+        title: 'Завершение',
+        steps: [
+          { type: 'breathing', refId: 'b1', title: 'Полное дыхание', duration: '5 мин' },
+          { type: 'meditation', refId: 'm4', title: 'Глубокое погружение', duration: '30 мин' },
+        ],
+      },
+    ],
+  },
   { id: 'p2', title: 'Управление стрессом', duration: '21 день', sessions: 21, description: 'Антистресс-программа для ежедневной практики', isActive: false },
   { id: 'p3', title: 'Глубокий сон', duration: '14 дней', sessions: 14, description: 'Улучшение качества и глубины сна', isActive: false },
   { id: 'p4', title: 'Энергия и продуктивность', duration: '30 дней', sessions: 30, description: 'Максимальный потенциал ума и тела', isActive: false },
@@ -133,9 +230,74 @@ export const achievements: Achievement[] = [
   { id: 'a6', title: 'Глубокое погружение', description: '100 часов медитации', icon: 'Gem', isUnlocked: false, progress: 23 },
 ]
 
+export const weekTheme: WeekTheme = {
+  week: 1,
+  title: 'Дыхание',
+  pillars: [
+    { id: 'breathing', label: 'дыхание' },
+    { id: 'smile', label: 'улыбка' },
+    { id: 'nutrition', label: 'питание' },
+    { id: 'acceptance', label: 'принятие' },
+    { id: 'silence', label: 'молчание' },
+  ],
+}
+
+export const dayCardBlocks: DayBlock[] = [
+  {
+    id: 'morning',
+    label: 'УТРО',
+    timeRange: '06:30 – 10:00',
+    emoji: '☀️',
+    accent: 'amber',
+    tasks: [
+      { id: 't1', title: 'Подъём до 7:00', time: '07:00', done: false },
+      { id: 't2', title: 'Полное дыхание — 10 циклов', time: '07:05', done: false },
+      { id: 't3', title: 'Душ / осознанное дыхание', time: '07:15', done: false },
+      { id: 't4', title: 'Умыть лицо холодной водой — 1 мин', time: '07:30', done: false },
+      { id: 't5', title: 'Чистить зубы — 20 вдохов каждой рукой', time: '07:35', done: false },
+      { id: 't6', title: 'Стакан воды с лимоном — 5–8 мин осознанно', time: '07:40', done: false },
+      { id: 't7', title: 'Дыхательный комплекс (полное · ритмическое · очищающее)', time: '08:00', done: false },
+      { id: 't8', title: 'Музыка / танец / зарядка — 5 мин', time: '08:20', done: false },
+    ],
+  },
+  {
+    id: 'day',
+    label: 'ДЕНЬ',
+    timeRange: '10:00 – 19:00',
+    emoji: '🌤',
+    accent: 'none',
+    tasks: [
+      { id: 't9', title: 'Прогулка / осознанное дыхание — 20 мин', done: false },
+      { id: 't10', title: 'Последний приём пищи до 18–19 часов', time: '18:30', done: false },
+    ],
+  },
+  {
+    id: 'evening',
+    label: 'ВЕЧЕР',
+    timeRange: '19:00 – 22:00',
+    emoji: '🌙',
+    accent: 'violet',
+    tasks: [
+      { id: 't11', title: 'Дыхательные упражнения (вечер)', time: '19:30', done: false },
+      { id: 't12', title: 'Чтение книги — 10 страниц / внимание на дыхании', time: '20:00', done: false },
+      { id: 't13', title: 'За 30 мин до сна — без телефона', time: '21:30', done: false },
+      { id: 't14', title: 'Перед сном — 10 циклов полное дыхание лёжа', time: '21:50', done: false },
+      { id: 't15', title: 'Отход ко сну до 22:00', time: '22:00', done: false },
+    ],
+  },
+]
+
 export const dailyStats: DailyStats = {
   meditationMinutes: 25,
   breathingSessions: 2,
   streak: 14,
   weekData: [15, 20, 10, 30, 25, 0, 20],
 }
+
+export const myPlanItems: { id: string; time: string; title: string; duration: string; section: string }[] = [
+  { id: 'mp1', time: '07:00', title: 'Полное дыхание', duration: '5 мин', section: 'Утро' },
+  { id: 'mp2', time: '07:30', title: 'Утренняя ясность', duration: '7 мин', section: 'Утро' },
+  { id: 'mp3', time: '12:00', title: 'Дыхание для концентрации', duration: '5 мин', section: 'День' },
+  { id: 'mp4', time: '19:30', title: 'Задержка на выдохе', duration: '7 мин', section: 'Вечер' },
+  { id: 'mp5', time: '21:00', title: 'Вечерняя релаксация', duration: '20 мин', section: 'Вечер' },
+]

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TelegramProvider } from "./providers";
+import { WellnessProvider } from "@/lib/store/WellnessContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,7 +34,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}
     >
       <body className="flex flex-col">
-        <TelegramProvider>{children}</TelegramProvider>
+        <TelegramProvider>
+          <WellnessProvider>{children}</WellnessProvider>
+        </TelegramProvider>
       </body>
     </html>
   );
