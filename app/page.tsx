@@ -13,7 +13,7 @@ import { FavoritesView } from '@/components/favorites/FavoritesView'
 import { NotificationsView } from '@/components/notifications/NotificationsView'
 import { ProfileView } from '@/components/profile/ProfileView'
 import { DayCardView } from '@/components/daycard/DayCardView'
-import { useWellness, createEvent, syncEventToSupabase, syncStateToSupabase } from '@/lib/store/WellnessContext'
+import { useWellness, createEvent, syncEventToSupabase } from '@/lib/store/WellnessContext'
 import { getStreakDays, offsetDateKey } from '@/lib/store/analytics'
 import type { TabId, SectionId } from '@/lib/types'
 
@@ -35,8 +35,7 @@ export default function Page() {
     const event = createEvent(eventPayload)
     dispatch({ type: 'LOG_EVENT', event })
     syncEventToSupabase(state.userId, event)
-    syncStateToSupabase(state.userId, { ...state, events: [...state.events, event] })
-  }, [dispatch, state])
+  }, [dispatch, state.userId])
 
   const streak = useMemo(
     () => getStreakDays(state.dailySnapshots, state.todayKey),

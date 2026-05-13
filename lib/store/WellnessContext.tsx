@@ -71,16 +71,10 @@ function fromPersistedState(state: PersistedState) {
 }
 
 function reducer(state: WellnessStore, action: Action): WellnessStore {
-  if (action.type !== 'TOGGLE_TASK' && action.type !== 'TOGGLE_PLAN_ITEM_DONE') {
-    console.log('[reducer]', action.type)
-  }
   switch (action.type) {
     case 'INIT': {
       const persisted = fromPersistedState(action.state)
-      console.time('[reducer:INIT] computeAllSnapshots')
       const snaps = computeAllSnapshots(action.events, persisted.assessmentsByDay)
-      console.timeEnd('[reducer:INIT] computeAllSnapshots')
-      console.log('[reducer:INIT] events:', action.events.length, 'snapshots:', Object.keys(snaps).length, 'userId:', action.userId)
       return {
         ...state,
         userId: action.userId,
@@ -96,7 +90,6 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
       const newEvents = action.events.filter(e => !existingIds.has(e.id))
       const merged = [...state.events, ...newEvents].sort((a, b) => a.timestamp - b.timestamp)
       const persisted = fromPersistedState(action.state)
-      console.log('[reducer:MERGE_REMOTE] new events:', newEvents.length, 'total:', merged.length)
       return {
         ...state,
         events: merged,

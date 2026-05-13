@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { useWellnessState } from '@/lib/store/WellnessContext'
 import { getPeriodStats, getWeekPeriod, getMonthPeriod, getYearPeriod, getStreakDays } from '@/lib/store/analytics'
@@ -85,27 +85,22 @@ function BarChart({ current, previous, period }: { current: PeriodStats; previou
   )
 }
 
-export function StatsTab() {
+function StatsTabInner() {
   const [period, setPeriod] = useState<Period>('week')
   const { events, assessmentsByDay, dailySnapshots, todayKey } = useWellnessState()
-  console.log('[StatsTab] render — events:', events.length, 'snapshots:', Object.keys(dailySnapshots).length, 'period:', period)
 
   const { start: curStart, end: curEnd } = period === 'week' ? getWeekPeriod(0) : period === 'month' ? getMonthPeriod(0) : getYearPeriod(0)
   const { start: prevStart, end: prevEnd } = period === 'week' ? getWeekPeriod(1) : period === 'month' ? getMonthPeriod(1) : getYearPeriod(1)
 
-  const current = useMemo(() => {
-    console.time('[StatsTab] getPeriodStats:current')
-    const r = getPeriodStats(events, assessmentsByDay, curStart, curEnd, 'Текущий')
-    console.timeEnd('[StatsTab] getPeriodStats:current')
-    return r
-  }, [events, assessmentsByDay, curStart, curEnd])
+  const current = useMemo(
+    () => getPeriodStats(events, assessmentsByDay, curStart, curEnd, 'Текущий'),
+    [events, assessmentsByDay, curStart, curEnd]
+  )
 
-  const previous = useMemo(() => {
-    console.time('[StatsTab] getPeriodStats:previous')
-    const r = getPeriodStats(events, assessmentsByDay, prevStart, prevEnd, 'Предыдущий')
-    console.timeEnd('[StatsTab] getPeriodStats:previous')
-    return r
-  }, [events, assessmentsByDay, prevStart, prevEnd])
+  const previous = useMemo(
+    () => getPeriodStats(events, assessmentsByDay, prevStart, prevEnd, 'Предыдущий'),
+    [events, assessmentsByDay, prevStart, prevEnd]
+  )
 
   const streak = useMemo(
     () => getStreakDays(dailySnapshots, todayKey),

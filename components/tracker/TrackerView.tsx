@@ -25,7 +25,6 @@ interface TrackerViewProps {
 
 export function TrackerView({ onBack }: TrackerViewProps) {
   const [activeTab, setActiveTab] = useState<TrackerTab>('stats')
-  console.log('[TrackerView] render, activeTab:', activeTab)
 
   const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
     useSwipeTabs(tabs, activeTab, setActiveTab)
