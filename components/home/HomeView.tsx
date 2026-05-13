@@ -119,25 +119,28 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
             </div>
           </button>
 
-          {/* Quick access */}
+          {/* Quick access - 4 large tiles */}
           <div>
-            <p className="label-upper mb-3">Быстрый доступ</p>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 md:flex-wrap md:overflow-visible">
+            <p className="label-upper mb-3">Наш быстрый доступ</p>
+            <div className="grid grid-cols-2 gap-3">
               {quickActions.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => onSectionSelect(id)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full flex-shrink-0 transition-all duration-300 active:scale-95"
+                  className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl transition-all duration-300 active:scale-95"
                   style={{
                     background: 'rgba(255,248,235,0.06)',
                     border: '1px solid rgba(255,220,170,0.08)',
                     color: 'rgba(255,248,235,0.7)',
-                    fontSize: 13,
-                    fontWeight: 500,
                   }}
                 >
-                  <Icon size={15} style={{ color: 'var(--amber)', opacity: 0.8 }} />
-                  {label}
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ background: 'rgba(255,220,170,0.08)' }}
+                  >
+                    <Icon size={24} style={{ color: 'var(--amber)', opacity: 0.9 }} />
+                  </div>
+                  <span className="text-sm font-medium">{label}</span>
                 </button>
               ))}
             </div>
@@ -146,20 +149,26 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
 
         {/* Right column: stats + week progress (lg+) */}
         <div className="flex flex-col gap-4 lg:flex-1">
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Stats grid - compact 4 columns, no scroll */}
+          <div className="grid grid-cols-4 gap-2">
             {[
               { icon: Flame, label: 'Серия', value: `${streak}`, unit: 'дней', color: 'var(--amber)' },
               { icon: Clock, label: 'Сегодня', value: `${meditationMinutes}`, unit: 'мин', color: 'var(--violet)' },
               { icon: Wind, label: 'Дыхание', value: `${breathingSessions}`, unit: 'сессий', color: 'var(--violet)' },
               { icon: Brain, label: 'Неделя', value: `${weekData.reduce((a, b) => a + b, 0)}`, unit: 'мин', color: 'var(--amber)' },
             ].map(({ icon: Icon, label, value, unit, color }) => (
-              <GlassCard key={label} className="p-4 text-center">
-                <Icon size={16} style={{ color, margin: '0 auto 4px' }} />
-                <p className="text-white font-bold text-xl">{value}</p>
-                <p className="text-xs" style={{ color: 'rgba(255,220,170,0.3)' }}>{unit}</p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,248,235,0.4)' }}>{label}</p>
-              </GlassCard>
+              <div
+                key={label}
+                className="flex flex-col items-center justify-center p-2 rounded-xl"
+                style={{
+                  background: 'rgba(255,248,235,0.04)',
+                  border: '1px solid rgba(255,220,170,0.06)',
+                }}
+              >
+                <Icon size={12} style={{ color, opacity: 0.8 }} />
+                <span className="text-white font-bold text-sm mt-1">{value}</span>
+                <span className="text-[10px]" style={{ color: 'rgba(255,220,170,0.3)' }}>{unit}</span>
+              </div>
             ))}
           </div>
 

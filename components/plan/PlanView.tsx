@@ -2,19 +2,25 @@
 
 import { useState } from 'react'
 import { useSwipeTabs } from '@/lib/useSwipeTabs'
-import { ChevronLeft, Target, BookOpen, User, Bell, BarChart3, CheckCircle2, Circle, Clock } from 'lucide-react'
+import { ChevronLeft, BookOpen, User, Bell, CheckCircle2, Circle, Clock } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
-import { goals, programs, reminders, dailyStats } from '@/lib/demo-data'
+import { goals, programs, reminders } from '@/lib/demo-data'
 import { cn } from '@/lib/utils'
 
-type PlanTab = 'goals' | 'programs' | 'myplan' | 'reminders' | 'stats'
+// type PlanTab = 'goals' | 'programs' | 'myplan' | 'reminders' | 'stats'
 
-const tabs: { id: PlanTab; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
-  { id: 'goals', label: 'Цели', icon: Target },
+// const tabs: { id: PlanTab; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
+//   { id: 'goals', label: 'Цели', icon: Target },
+//   { id: 'programs', label: 'Программы', icon: BookOpen },
+//   { id: 'myplan', label: 'Мой план', icon: User },
+//   { id: 'reminders', label: 'Напоминания', icon: Bell },
+//   { id: 'stats', label: 'Статистика', icon: BarChart3 },
+// ]
+
+const tabs: { id: string; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
   { id: 'programs', label: 'Программы', icon: BookOpen },
   { id: 'myplan', label: 'Мой план', icon: User },
   { id: 'reminders', label: 'Напоминания', icon: Bell },
-  { id: 'stats', label: 'Статистика', icon: BarChart3 },
 ]
 
 interface PlanViewProps {
@@ -22,7 +28,7 @@ interface PlanViewProps {
 }
 
 export function PlanView({ onBack }: PlanViewProps) {
-  const [activeTab, setActiveTab] = useState<PlanTab>('goals')
+  const [activeTab, setActiveTab] = useState('programs')
   const [reminderStates, setReminderStates] = useState(reminders.map(r => r.isEnabled))
 
   const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
