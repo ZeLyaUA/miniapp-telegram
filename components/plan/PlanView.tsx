@@ -82,7 +82,7 @@ export function PlanView({ onBack }: PlanViewProps) {
           className={cn('px-4 pb-28 md:pb-8 pt-1 min-h-full', animClass)}
           onAnimationEnd={() => setSwipeDir(null)}
         >
-        {activeTab === 'goals' && (
+        {/* {activeTab === 'goals' && (
           <div className="flex flex-col gap-3 mt-2 max-w-lg">
             {goals.map(goal => (
               <GlassCard key={goal.id} className="p-4">
@@ -107,7 +107,7 @@ export function PlanView({ onBack }: PlanViewProps) {
               </GlassCard>
             ))}
           </div>
-        )}
+        )} */}
 
         {activeTab === 'programs' && (
           <div className="flex flex-col gap-3 mt-2 max-w-lg">
@@ -193,7 +193,7 @@ export function PlanView({ onBack }: PlanViewProps) {
           </div>
         )}
 
-        {activeTab === 'stats' && (
+        {/* {activeTab === 'stats' && (
           <div className="flex flex-col gap-3 mt-2">
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -210,7 +210,7 @@ export function PlanView({ onBack }: PlanViewProps) {
               ))}
             </div>
           </div>
-        )}
+        )} */}
         </div>{/* end content wrapper */}
         </div>{/* end content */}
       </div>{/* end flex row */}

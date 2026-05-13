@@ -53,9 +53,9 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
         <h1 className="text-white font-bold mt-0.5" style={{ fontSize: 28, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
           {firstName ?? 'ваш ритуал ждёт'}
         </h1>
-        <p className="mt-1.5 text-xs" style={{ color: 'rgba(255,220,170,0.4)', letterSpacing: '0.04em' }}>
+        {/* <p className="mt-1.5 text-xs" style={{ color: 'rgba(255,220,170,0.4)', letterSpacing: '0.04em' }}>
           {streak} дней серии · продолжайте
-        </p>
+        </p> */}
       </div>
 
       {/* Desktop greeting */}
@@ -64,9 +64,9 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
         <h1 className="text-white font-bold mt-0.5" style={{ fontSize: 32, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
           {firstName ?? 'ваш ритуал ждёт'}
         </h1>
-        <p className="mt-1.5 text-xs" style={{ color: 'rgba(255,220,170,0.4)', letterSpacing: '0.04em' }}>
+        {/* <p className="mt-1.5 text-xs" style={{ color: 'rgba(255,220,170,0.4)', letterSpacing: '0.04em' }}>
           {streak} дней серии · продолжайте
-        </p>
+        </p> */}
       </div>
 
       {/* Two-column layout on md+ */}
@@ -164,7 +164,7 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
           </div>
 
           {/* Week progress */}
-          <div>
+          {/* <div>
             <p className="label-upper mb-3">Прогресс недели</p>
             <GlassCard className="p-4">
               <div className="flex items-center justify-between gap-1">
@@ -191,7 +191,7 @@ export function HomeView({ firstName, onSectionSelect }: HomeViewProps) {
                 })}
               </div>
             </GlassCard>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
