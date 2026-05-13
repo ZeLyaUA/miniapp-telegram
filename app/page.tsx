@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { retrieveLaunchParams } from '@telegram-apps/sdk-react'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { SidebarNav } from '@/components/layout/SidebarNav'
@@ -14,7 +14,7 @@ import { NotificationsView } from '@/components/notifications/NotificationsView'
 import { ProfileView } from '@/components/profile/ProfileView'
 import { DayCardView } from '@/components/daycard/DayCardView'
 import { useWellness, createEvent, syncEventToSupabase, syncStateToSupabase } from '@/lib/store/WellnessContext'
-import { getStreakDays, computeAllSnapshots } from '@/lib/store/analytics'
+import { getStreakDays, offsetDateKey } from '@/lib/store/analytics'
 import type { TabId, SectionId } from '@/lib/types'
 
 export default function Page() {
@@ -38,8 +38,18 @@ export default function Page() {
     syncStateToSupabase(state.userId, { ...state, events: [...state.events, event] })
   }, [dispatch, state])
 
-  const snapshots = computeAllSnapshots(state.events, state.assessmentsByDay)
-  const streak = getStreakDays(snapshots, state.todayKey)
+  const streak = useMemo(
+    () => getStreakDays(state.dailySnapshots, state.todayKey),
+    [state.dailySnapshots, state.todayKey]
+  )
+
+  const weekMinutes = useMemo(() => {
+    const keys = Array.from({ length: 7 }, (_, i) => offsetDateKey(-(6 - i)))
+    return keys.reduce((s, k) => {
+      const snap = state.dailySnapshots[k]
+      return s + (snap?.meditationMinutes ?? 0) + (snap?.breathingMinutes ?? 0)
+    }, 0)
+  }, [state.dailySnapshots])
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab)
@@ -76,11 +86,9 @@ export default function Page() {
           firstName={firstName}
           onSectionSelect={setActiveSection}
           streak={streak}
-          meditationMinutesToday={snapshots[state.todayKey]?.meditationMinutes ?? 0}
-          breathingSessionsToday={snapshots[state.todayKey]?.breathingSessionCount ?? 0}
-          weekMinutes={Object.entries(snapshots)
-            .filter(([k]) => k >= state.todayKey.slice(0, 8) + '01' || true)
-            .slice(-7).reduce((s, [, snap]) => s + snap.meditationMinutes + snap.breathingMinutes, 0)}
+          meditationMinutesToday={state.dailySnapshots[state.todayKey]?.meditationMinutes ?? 0}
+          breathingSessionsToday={state.dailySnapshots[state.todayKey]?.breathingSessionCount ?? 0}
+          weekMinutes={weekMinutes}
         />
       )
     }

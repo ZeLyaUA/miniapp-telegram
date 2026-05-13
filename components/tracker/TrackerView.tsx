@@ -8,6 +8,7 @@ import { StatsTab } from './StatsTab'
 import { ActivityTab } from './ActivityTab'
 import { WellbeingTab } from './WellbeingTab'
 import { HabitsTab } from './HabitsTab'
+import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 
 type TrackerTab = 'stats' | 'activity' | 'wellbeing' | 'habits'
 
@@ -24,6 +25,7 @@ interface TrackerViewProps {
 
 export function TrackerView({ onBack }: TrackerViewProps) {
   const [activeTab, setActiveTab] = useState<TrackerTab>('stats')
+  console.log('[TrackerView] render, activeTab:', activeTab)
 
   const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
     useSwipeTabs(tabs, activeTab, setActiveTab)
@@ -81,10 +83,10 @@ export function TrackerView({ onBack }: TrackerViewProps) {
             className={cn('px-4 pb-28 md:pb-8 pt-1 min-h-full', animClass)}
             onAnimationEnd={() => setSwipeDir(null)}
           >
-            {activeTab === 'stats' && <StatsTab />}
-            {activeTab === 'activity' && <ActivityTab />}
-            {activeTab === 'wellbeing' && <WellbeingTab />}
-            {activeTab === 'habits' && <HabitsTab />}
+            {activeTab === 'stats' && <ErrorBoundary name="StatsTab"><StatsTab /></ErrorBoundary>}
+            {activeTab === 'activity' && <ErrorBoundary name="ActivityTab"><ActivityTab /></ErrorBoundary>}
+            {activeTab === 'wellbeing' && <ErrorBoundary name="WellbeingTab"><WellbeingTab /></ErrorBoundary>}
+            {activeTab === 'habits' && <ErrorBoundary name="HabitsTab"><HabitsTab /></ErrorBoundary>}
           </div>
         </div>
       </div>

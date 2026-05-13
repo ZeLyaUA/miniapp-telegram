@@ -244,11 +244,9 @@ export function getHabitStreak(events: WellnessEvent[], habitId: string): number
 }
 
 export function getMoodCorrelation(
-  events: WellnessEvent[],
-  assessmentsByDay: Record<string, Assessment>,
+  snapshots: Record<string, DailySnapshot>,
   metric: 'meditation' | 'breathing'
 ): { withPractice: number | null; withoutPractice: number | null; diff: number | null } {
-  const snapshots = computeAllSnapshots(events, assessmentsByDay)
   const withMood: number[] = []
   const withoutMood: number[] = []
 

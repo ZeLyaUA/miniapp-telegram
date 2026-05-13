@@ -12,6 +12,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; style?: React
 export function HabitsTab() {
   const { state, dispatch } = useWellness()
   const today = todayKey()
+  console.log('[HabitsTab] render — habits:', state.habits.length, 'events:', state.events.length)
 
   const toggleHabit = (habitId: string, currentlyDone: boolean) => {
     const event = createEvent({

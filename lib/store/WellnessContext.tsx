@@ -11,7 +11,8 @@ import {
   loadStateFromSupabase, saveStateToSupabase,
   type PersistedState,
 } from './persistence'
-import { todayKey } from './analytics'
+import { todayKey, computeAllSnapshots, computeDailySnapshot } from './analytics'
+import type { DailySnapshot } from '../types'
 
 // ── Store shape ───────────────────────────────────────────────────────────────
 
@@ -20,6 +21,8 @@ export interface WellnessStore {
   todayKey: string
   isLoading: boolean
   events: WellnessEvent[]
+  // Derived — computed in reducer, never persisted
+  dailySnapshots: Record<string, DailySnapshot>
   // Per-day state
   doneTasksByDay: Record<string, string[]>
   assessmentsByDay: Record<string, Assessment>
@@ -68,30 +71,49 @@ function fromPersistedState(state: PersistedState) {
 }
 
 function reducer(state: WellnessStore, action: Action): WellnessStore {
+  if (action.type !== 'TOGGLE_TASK' && action.type !== 'TOGGLE_PLAN_ITEM_DONE') {
+    console.log('[reducer]', action.type)
+  }
   switch (action.type) {
-    case 'INIT':
+    case 'INIT': {
+      const persisted = fromPersistedState(action.state)
+      console.time('[reducer:INIT] computeAllSnapshots')
+      const snaps = computeAllSnapshots(action.events, persisted.assessmentsByDay)
+      console.timeEnd('[reducer:INIT] computeAllSnapshots')
+      console.log('[reducer:INIT] events:', action.events.length, 'snapshots:', Object.keys(snaps).length, 'userId:', action.userId)
       return {
         ...state,
         userId: action.userId,
         events: action.events,
-        ...fromPersistedState(action.state),
+        ...persisted,
+        dailySnapshots: snaps,
         isLoading: false,
-      }
-
-    case 'MERGE_REMOTE': {
-      // Merge remote events (remote wins for events — union by id)
-      const existingIds = new Set(state.events.map(e => e.id))
-      const newEvents = action.events.filter(e => !existingIds.has(e.id))
-      const merged = [...state.events, ...newEvents].sort((a, b) => a.timestamp - b.timestamp)
-      return {
-        ...state,
-        events: merged,
-        ...fromPersistedState(action.state),
       }
     }
 
-    case 'LOG_EVENT':
-      return { ...state, events: [...state.events, action.event] }
+    case 'MERGE_REMOTE': {
+      const existingIds = new Set(state.events.map(e => e.id))
+      const newEvents = action.events.filter(e => !existingIds.has(e.id))
+      const merged = [...state.events, ...newEvents].sort((a, b) => a.timestamp - b.timestamp)
+      const persisted = fromPersistedState(action.state)
+      console.log('[reducer:MERGE_REMOTE] new events:', newEvents.length, 'total:', merged.length)
+      return {
+        ...state,
+        events: merged,
+        ...persisted,
+        dailySnapshots: computeAllSnapshots(merged, persisted.assessmentsByDay),
+      }
+    }
+
+    case 'LOG_EVENT': {
+      const newEvents = [...state.events, action.event]
+      const updatedSnap = computeDailySnapshot(newEvents, state.assessmentsByDay, action.event.dateKey)
+      return {
+        ...state,
+        events: newEvents,
+        dailySnapshots: { ...state.dailySnapshots, [action.event.dateKey]: updatedSnap },
+      }
+    }
 
     case 'TOGGLE_TASK': {
       const current = state.doneTasksByDay[action.dateKey] ?? []
@@ -105,11 +127,15 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
       }
     }
 
-    case 'SAVE_ASSESSMENT':
+    case 'SAVE_ASSESSMENT': {
+      const newAssessments = { ...state.assessmentsByDay, [action.dateKey]: action.assessment }
+      const updatedSnap = computeDailySnapshot(state.events, newAssessments, action.dateKey)
       return {
         ...state,
-        assessmentsByDay: { ...state.assessmentsByDay, [action.dateKey]: action.assessment },
+        assessmentsByDay: newAssessments,
+        dailySnapshots: { ...state.dailySnapshots, [action.dateKey]: updatedSnap },
       }
+    }
 
     case 'ADD_PLAN_ITEM':
       return { ...state, planItems: [...state.planItems, action.item] }
@@ -176,8 +202,15 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
     case 'DELETE_REMINDER':
       return { ...state, reminders: state.reminders.filter(r => r.id !== action.id) }
 
-    case 'CHECK_HABIT':
-      return { ...state, events: [...state.events, action.event] }
+    case 'CHECK_HABIT': {
+      const newEvents = [...state.events, action.event]
+      const updatedSnap = computeDailySnapshot(newEvents, state.assessmentsByDay, action.event.dateKey)
+      return {
+        ...state,
+        events: newEvents,
+        dailySnapshots: { ...state.dailySnapshots, [action.event.dateKey]: updatedSnap },
+      }
+    }
 
     default:
       return state
@@ -215,6 +248,7 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
     todayKey: todayKey(),
     isLoading: true,
     events: [],
+    dailySnapshots: {},
     doneTasksByDay: {},
     assessmentsByDay: {},
     donePlanItemsByDay: {},

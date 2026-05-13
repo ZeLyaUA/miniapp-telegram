@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { useWellnessState } from '@/lib/store/WellnessContext'
-import { getPeriodStats, getWeekPeriod, getMonthPeriod, getYearPeriod, getStreakDays, computeAllSnapshots } from '@/lib/store/analytics'
+import { getPeriodStats, getWeekPeriod, getMonthPeriod, getYearPeriod, getStreakDays } from '@/lib/store/analytics'
 import type { PeriodStats } from '@/lib/types'
 
 type Period = 'week' | 'month' | 'year'
@@ -87,16 +87,30 @@ function BarChart({ current, previous, period }: { current: PeriodStats; previou
 
 export function StatsTab() {
   const [period, setPeriod] = useState<Period>('week')
-  const { events, assessmentsByDay, todayKey } = useWellnessState()
+  const { events, assessmentsByDay, dailySnapshots, todayKey } = useWellnessState()
+  console.log('[StatsTab] render — events:', events.length, 'snapshots:', Object.keys(dailySnapshots).length, 'period:', period)
 
   const { start: curStart, end: curEnd } = period === 'week' ? getWeekPeriod(0) : period === 'month' ? getMonthPeriod(0) : getYearPeriod(0)
   const { start: prevStart, end: prevEnd } = period === 'week' ? getWeekPeriod(1) : period === 'month' ? getMonthPeriod(1) : getYearPeriod(1)
 
-  const current = getPeriodStats(events, assessmentsByDay, curStart, curEnd, 'Текущий')
-  const previous = getPeriodStats(events, assessmentsByDay, prevStart, prevEnd, 'Предыдущий')
+  const current = useMemo(() => {
+    console.time('[StatsTab] getPeriodStats:current')
+    const r = getPeriodStats(events, assessmentsByDay, curStart, curEnd, 'Текущий')
+    console.timeEnd('[StatsTab] getPeriodStats:current')
+    return r
+  }, [events, assessmentsByDay, curStart, curEnd])
 
-  const snapshots = computeAllSnapshots(events, assessmentsByDay)
-  const streak = getStreakDays(snapshots, todayKey)
+  const previous = useMemo(() => {
+    console.time('[StatsTab] getPeriodStats:previous')
+    const r = getPeriodStats(events, assessmentsByDay, prevStart, prevEnd, 'Предыдущий')
+    console.timeEnd('[StatsTab] getPeriodStats:previous')
+    return r
+  }, [events, assessmentsByDay, prevStart, prevEnd])
+
+  const streak = useMemo(
+    () => getStreakDays(dailySnapshots, todayKey),
+    [dailySnapshots, todayKey]
+  )
 
   const periodLabel = period === 'week' ? 'неделю' : period === 'month' ? 'месяц' : 'год'
   const prevLabel = period === 'week' ? 'прошлой' : period === 'month' ? 'прошлого' : 'прошлого'

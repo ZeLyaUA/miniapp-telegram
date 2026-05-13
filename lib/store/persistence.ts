@@ -23,7 +23,11 @@ const emptyState: PersistedState = {
   donePlanItemsByDay: {},
   activeProgram: null,
   favoriteMeditationIds: [],
-  reminders: [],
+  reminders: [
+    { id: 'r1', title: 'Утренняя медитация', time: '08:00', days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'], isEnabled: true },
+    { id: 'r2', title: 'Вечернее дыхание', time: '21:00', days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], isEnabled: true },
+    { id: 'r3', title: 'Выходной ритуал', time: '10:00', days: ['Сб', 'Вс'], isEnabled: false },
+  ],
   habits: [
     { id: 'h1', label: 'Утренняя медитация', icon: 'Brain' },
     { id: 'h2', label: 'Дыхательные упражнения', icon: 'Wind' },

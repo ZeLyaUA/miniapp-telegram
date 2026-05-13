@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import { useSwipeTabs } from '@/lib/useSwipeTabs'
-import { ChevronLeft, BookOpen, User, Bell, CheckCircle2, Circle, Clock, Plus, X, Pencil, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, BookOpen, User, Bell, CheckCircle2, Circle, Clock, Plus, X, Pencil, Trash2, Wind, Brain } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { ProgramDetailView } from './ProgramDetailView'
-import { programs, reminders, myPlanItems } from '@/lib/demo-data'
+import { programs } from '@/lib/demo-data'
 import { cn } from '@/lib/utils'
-import type { Program, Reminder, SectionId } from '@/lib/types'
-
-type PlanItem = { id: string; time: string; title: string; duration: string; section: string }
+import { useWellness, createEvent, syncEventToSupabase, syncStateToSupabase } from '@/lib/store/WellnessContext'
+import { getPlanItemsForProgramDay } from '@/lib/store/programUtils'
+import type { Program, Reminder, SectionId, StorePlanItem, ActiveProgramState } from '@/lib/types'
 
 const tabs: { id: string; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
   { id: 'programs', label: 'Программы', icon: BookOpen },
@@ -20,7 +20,7 @@ const tabs: { id: string; label: string; icon: React.ComponentType<{ size?: numb
 const DAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 const TIME_PRESETS = ['06:00', '08:00', '12:00', '18:00', '21:00']
 const DURATION_PRESETS = ['5 мин', '10 мин', '15 мин', '20 мин', '30 мин', '45 мин']
-const SECTIONS = ['Утро', 'День', 'Вечер']
+const SECTIONS: Array<'Утро' | 'День' | 'Вечер'> = ['Утро', 'День', 'Вечер']
 
 const todayLabel = (() => {
   const d = new Date()
@@ -33,82 +33,132 @@ interface PlanViewProps {
 }
 
 export function PlanView({ onBack, onNavigate }: PlanViewProps) {
+  const { state, dispatch } = useWellness()
+  const todayKey = state.todayKey
+  const planItems = state.planItems
+  const doneItems = new Set(state.donePlanItemsByDay[todayKey] ?? [])
+  const storeReminders = state.reminders
+  const activeProgram = state.activeProgram
+
   const [activeTab, setActiveTab] = useState('programs')
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null)
 
-  // ── Мой план ──
-  const [planItems, setPlanItems] = useState<PlanItem[]>(myPlanItems)
-  const [doneItems, setDoneItems] = useState<Set<string>>(new Set(['mp1', 'mp2']))
+  // ── Мой план ── form state
   const [showPlanForm, setShowPlanForm] = useState(false)
-  const [editingItem, setEditingItem] = useState<PlanItem | null>(null)
+  const [editingItem, setEditingItem] = useState<StorePlanItem | null>(null)
   const [formTitle, setFormTitle] = useState('')
   const [formTime, setFormTime] = useState('08:00')
   const [formDuration, setFormDuration] = useState('10 мин')
-  const [formSection, setFormSection] = useState('Утро')
+  const [formSection, setFormSection] = useState<'Утро' | 'День' | 'Вечер'>('Утро')
 
-  const toggleDone = (id: string) =>
-    setDoneItems(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  // ── Напоминания ── form state
+  const [showReminderForm, setShowReminderForm] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [newTime, setNewTime] = useState('08:00')
+  const [newDays, setNewDays] = useState<Set<string>>(new Set(['Пн', 'Вт', 'Ср', 'Чт', 'Пт']))
+
+  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
+    useSwipeTabs(tabs, activeTab, setActiveTab)
+
+  // ── Programs ──────────────────────────────────────────────────────────────
+
+  const handleStartProgram = (program: Program) => {
+    const newActiveProgram: ActiveProgramState = {
+      programId: program.id,
+      startedAt: Date.now(),
+      currentDay: 1,
+      completedDays: [],
+    }
+    const dayItems = getPlanItemsForProgramDay(program, 1)
+    dispatch({ type: 'START_PROGRAM', activeProgram: newActiveProgram, planItems: dayItems })
+    const event = createEvent({
+      type: 'program_started',
+      programId: program.id,
+      programTitle: program.title,
+      totalDays: program.days?.length ?? 0,
+    })
+    dispatch({ type: 'LOG_EVENT', event })
+    syncEventToSupabase(state.userId, event)
+    syncStateToSupabase(state.userId, state)
+    setActiveTab('myplan')
+  }
+
+  const handleAdvanceProgram = () => {
+    if (!activeProgram) return
+    const currentProgram = programs.find(p => p.id === activeProgram.programId)
+    if (!currentProgram) return
+    const nextDay = activeProgram.currentDay + 1
+    const nextDayItems = getPlanItemsForProgramDay(currentProgram, nextDay)
+    dispatch({ type: 'ADVANCE_PROGRAM_DAY', dayNumber: activeProgram.currentDay, newPlanItems: nextDayItems })
+    const event = createEvent({
+      type: 'program_day_completed',
+      programId: activeProgram.programId,
+      dayNumber: activeProgram.currentDay,
+    })
+    dispatch({ type: 'LOG_EVENT', event })
+    syncEventToSupabase(state.userId, event)
+    syncStateToSupabase(state.userId, state)
+  }
+
+  // ── My Plan ───────────────────────────────────────────────────────────────
+
+  const toggleDone = (item: StorePlanItem) => {
+    dispatch({ type: 'TOGGLE_PLAN_ITEM_DONE', dateKey: todayKey, itemId: item.id, source: item.source, programId: item.programId })
+    const event = createEvent({
+      type: 'plan_item_toggled',
+      itemId: item.id,
+      done: !doneItems.has(item.id),
+      source: item.source,
+      programId: item.programId,
+    })
+    dispatch({ type: 'LOG_EVENT', event })
+    syncEventToSupabase(state.userId, event)
+    syncStateToSupabase(state.userId, { ...state, donePlanItemsByDay: { ...state.donePlanItemsByDay, [todayKey]: [...(state.donePlanItemsByDay[todayKey] ?? []), item.id] } })
+  }
 
   const openAddForm = () => {
-    setEditingItem(null)
-    setFormTitle('')
-    setFormTime('08:00')
-    setFormDuration('10 мин')
-    setFormSection('Утро')
+    setEditingItem(null); setFormTitle(''); setFormTime('08:00'); setFormDuration('10 мин'); setFormSection('Утро')
     setShowPlanForm(true)
   }
 
-  const openEditForm = (item: PlanItem) => {
+  const openEditForm = (item: StorePlanItem) => {
     setEditingItem(item)
-    setFormTitle(item.title)
-    setFormTime(item.time)
-    setFormDuration(item.duration)
+    setFormTitle(item.title); setFormTime(item.time); setFormDuration(item.duration)
     setFormSection(item.section)
     setShowPlanForm(true)
   }
 
   const closePlanForm = () => {
-    setShowPlanForm(false)
-    setEditingItem(null)
-    setFormTitle('')
-    setFormTime('08:00')
-    setFormDuration('10 мин')
-    setFormSection('Утро')
+    setShowPlanForm(false); setEditingItem(null); setFormTitle(''); setFormTime('08:00'); setFormDuration('10 мин'); setFormSection('Утро')
   }
 
   const savePlanItem = () => {
     if (!formTitle.trim()) return
     if (editingItem) {
-      setPlanItems(prev => prev.map(p => p.id === editingItem.id
-        ? { ...p, title: formTitle.trim(), time: formTime, duration: formDuration, section: formSection }
-        : p
-      ))
+      const updated: StorePlanItem = { ...editingItem, title: formTitle.trim(), time: formTime, duration: formDuration, section: formSection }
+      dispatch({ type: 'UPDATE_PLAN_ITEM', item: updated })
     } else {
-      const newItem: PlanItem = {
+      const newItem: StorePlanItem = {
         id: `mp${Date.now()}`,
         title: formTitle.trim(),
         time: formTime,
         duration: formDuration,
         section: formSection,
+        source: 'manual',
       }
-      setPlanItems(prev => [...prev, newItem])
+      dispatch({ type: 'ADD_PLAN_ITEM', item: newItem })
     }
+    syncStateToSupabase(state.userId, state)
     closePlanForm()
   }
 
   const deletePlanItem = (id: string) => {
-    setPlanItems(prev => prev.filter(p => p.id !== id))
-    setDoneItems(prev => { const s = new Set(prev); s.delete(id); return s })
+    dispatch({ type: 'DELETE_PLAN_ITEM', id })
+    syncStateToSupabase(state.userId, state)
     closePlanForm()
   }
 
-  // ── Напоминания ──
-  const [localReminders, setLocalReminders] = useState<Reminder[]>(reminders)
-  const [reminderStates, setReminderStates] = useState(reminders.map(r => r.isEnabled))
-  const [showReminderForm, setShowReminderForm] = useState(false)
-  const [newTitle, setNewTitle] = useState('')
-  const [newTime, setNewTime] = useState('08:00')
-  const [newDays, setNewDays] = useState<Set<string>>(new Set(['Пн', 'Вт', 'Ср', 'Чт', 'Пт']))
+  // ── Reminders ─────────────────────────────────────────────────────────────
 
   const toggleDay = (day: string) =>
     setNewDays(prev => { const s = new Set(prev); s.has(day) ? s.delete(day) : s.add(day); return s })
@@ -122,22 +172,22 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
       days: DAY_LABELS.filter(d => newDays.has(d)),
       isEnabled: true,
     }
-    setLocalReminders(prev => [...prev, r])
-    setReminderStates(prev => [...prev, true])
-    setShowReminderForm(false)
-    setNewTitle('')
-    setNewTime('08:00')
-    setNewDays(new Set(['Пн', 'Вт', 'Ср', 'Чт', 'Пт']))
+    dispatch({ type: 'ADD_REMINDER', reminder: r })
+    syncStateToSupabase(state.userId, state)
+    setShowReminderForm(false); setNewTitle(''); setNewTime('08:00'); setNewDays(new Set(['Пн', 'Вт', 'Ср', 'Чт', 'Пт']))
   }
 
   const deleteReminder = (id: string) => {
-    const idx = localReminders.findIndex(r => r.id === id)
-    setLocalReminders(prev => prev.filter(r => r.id !== id))
-    setReminderStates(prev => prev.filter((_, i) => i !== idx))
+    dispatch({ type: 'DELETE_REMINDER', id })
+    syncStateToSupabase(state.userId, state)
   }
 
-  const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
-    useSwipeTabs(tabs, activeTab, setActiveTab)
+  const toggleReminder = (reminder: Reminder) => {
+    dispatch({ type: 'UPDATE_REMINDER', reminder: { ...reminder, isEnabled: !reminder.isEnabled } })
+    syncStateToSupabase(state.userId, state)
+  }
+
+  // ── Derived ───────────────────────────────────────────────────────────────
 
   if (selectedProgram) {
     return (
@@ -150,6 +200,14 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
   }
 
   const planFormValid = formTitle.trim().length > 0
+  const manualItems = planItems.filter(p => p.source === 'manual')
+  const programItems = planItems.filter(p => p.source === 'program')
+  const allProgramItemsDone = programItems.length > 0 && programItems.every(p => doneItems.has(p.id))
+
+  // Show active program progress
+  const activeProgDetails = activeProgram ? programs.find(p => p.id === activeProgram.programId) : null
+  const totalProgramDays = activeProgDetails?.days?.length ?? 0
+  const progProgress = totalProgramDays > 0 ? activeProgram!.completedDays.length / totalProgramDays : 0
 
   return (
     <div className="flex flex-col h-full">
@@ -208,54 +266,173 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
             {/* ── Программы ── */}
             {activeTab === 'programs' && (
               <div className="flex flex-col gap-3 mt-2 max-w-lg">
-                {programs.map(program => (
-                  <GlassCard key={program.id} accent={program.isActive ? 'amber' : 'none'} className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-white font-medium text-sm">{program.title}</p>
-                          {program.isActive && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(201,150,90,0.15)', color: 'var(--amber)' }}>Активна</span>
-                          )}
+                {/* Active program progress card */}
+                {activeProgram && activeProgDetails && (
+                  <GlassCard accent="amber" className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold" style={{ color: 'var(--amber)' }}>Активная программа</p>
+                      <span className="text-xs" style={{ color: 'rgba(255,220,170,0.5)' }}>
+                        День {activeProgram.currentDay} из {totalProgramDays}
+                      </span>
+                    </div>
+                    <p className="text-white font-medium text-sm mb-3">{activeProgDetails.title}</p>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,220,170,0.1)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${progProgress * 100}%`, background: 'var(--amber)' }}
+                      />
+                    </div>
+                    <p className="text-xs mt-2" style={{ color: 'rgba(255,220,170,0.4)' }}>
+                      {activeProgram.completedDays.length} дней завершено
+                    </p>
+                  </GlassCard>
+                )}
+
+                {programs.map(program => {
+                  const isActiveProg = activeProgram?.programId === program.id
+                  return (
+                    <GlassCard key={program.id} accent={isActiveProg ? 'amber' : 'none'} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-white font-medium text-sm">{program.title}</p>
+                            {isActiveProg && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(201,150,90,0.15)', color: 'var(--amber)' }}>Активна</span>
+                            )}
+                          </div>
+                          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,220,170,0.4)' }}>{program.description}</p>
+                          <div className="flex gap-3 mt-2 text-xs" style={{ color: 'rgba(255,220,170,0.3)' }}>
+                            <span>{program.duration}</span>
+                            <span>·</span>
+                            <span>{program.sessions} сессий</span>
+                          </div>
                         </div>
-                        <p className="text-xs mt-0.5" style={{ color: 'rgba(255,220,170,0.4)' }}>{program.description}</p>
-                        <div className="flex gap-3 mt-2 text-xs" style={{ color: 'rgba(255,220,170,0.3)' }}>
-                          <span>{program.duration}</span>
-                          <span>·</span>
-                          <span>{program.sessions} сессий</span>
+                        <div className="flex flex-col gap-1.5 flex-shrink-0">
+                          {!isActiveProg && (
+                            <button
+                              onClick={() => handleStartProgram(program)}
+                              className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 active:scale-95"
+                              style={{ background: 'rgba(201,150,90,0.15)', color: 'var(--amber)', border: '1px solid rgba(201,150,90,0.2)' }}
+                            >
+                              Начать
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setSelectedProgram(program)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 active:scale-95"
+                            style={{ background: 'rgba(255,248,235,0.06)', color: 'rgba(255,248,235,0.35)', border: '1px solid rgba(255,220,170,0.08)' }}
+                          >
+                            {isActiveProg ? 'Детали' : 'Просмотр'}
+                          </button>
                         </div>
                       </div>
-                      <button
-                        onClick={() => setSelectedProgram(program)}
-                        className="px-3 py-1.5 rounded-xl text-xs font-medium flex-shrink-0 transition-all duration-300 active:scale-95"
-                        style={{ background: program.isActive ? 'rgba(201,150,90,0.15)' : 'rgba(255,248,235,0.06)', color: program.isActive ? 'var(--amber)' : 'rgba(255,248,235,0.35)', border: '1px solid rgba(255,220,170,0.08)' }}
-                      >
-                        {program.isActive ? 'Продолжить' : 'Начать'}
-                      </button>
-                    </div>
-                  </GlassCard>
-                ))}
+                    </GlassCard>
+                  )
+                })}
               </div>
             )}
 
             {/* ── Мой план ── */}
             {activeTab === 'myplan' && (
               <div className="flex flex-col gap-3 mt-2 max-w-lg">
-                <GlassCard accent="amber" className="overflow-hidden">
-                  {/* Date header */}
+
+                {/* Program completion card */}
+                {allProgramItemsDone && activeProgram && (
+                  <GlassCard accent="amber" className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(201,150,90,0.2)' }}>
+                        <CheckCircle2 size={20} style={{ color: 'var(--amber)' }} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-white">День {activeProgram.currentDay} завершён!</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'rgba(255,220,170,0.5)' }}>Все практики выполнены</p>
+                      </div>
+                      <button
+                        onClick={handleAdvanceProgram}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold flex-shrink-0 transition-all duration-300 active:scale-95"
+                        style={{ background: 'rgba(201,150,90,0.8)', color: 'rgba(255,240,210,0.95)', border: '1px solid rgba(201,150,90,0.3)' }}
+                      >
+                        Дальше
+                        <ChevronRight size={12} />
+                      </button>
+                    </div>
+                  </GlassCard>
+                )}
+
+                {/* Program items */}
+                {programItems.length > 0 && (
+                  <GlassCard accent="amber" className="overflow-hidden">
+                    <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: 'rgba(255,220,170,0.08)' }}>
+                      <p className="font-semibold text-sm" style={{ color: 'var(--amber)' }}>
+                        {activeProgDetails?.title ?? 'Программа'}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: 'rgba(255,220,170,0.4)' }}>
+                        День {activeProgram?.currentDay}
+                      </p>
+                    </div>
+                    {programItems.map((item, i) => {
+                      const done = doneItems.has(item.id)
+                      const isLast = i === programItems.length - 1
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn('flex items-center gap-3 px-4 py-3', !isLast && 'border-b')}
+                          style={{ borderColor: 'rgba(255,220,170,0.06)' }}
+                        >
+                          <button onClick={() => toggleDone(item)} className="flex-shrink-0 transition-all duration-300 active:scale-90">
+                            {done
+                              ? <CheckCircle2 size={16} style={{ color: 'var(--amber)' }} />
+                              : <Circle size={16} style={{ color: 'rgba(255,255,255,0.18)' }} />}
+                          </button>
+
+                          <div
+                            className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ background: item.practiceType === 'breathing' ? 'rgba(201,150,90,0.12)' : 'rgba(139,117,207,0.12)' }}
+                          >
+                            {item.practiceType === 'breathing'
+                              ? <Wind size={12} style={{ color: 'var(--amber)' }} />
+                              : <Brain size={12} style={{ color: 'var(--violet)' }} />}
+                          </div>
+
+                          <p className={cn('text-sm flex-1 min-w-0 truncate', done ? 'line-through' : 'text-white')} style={done ? { color: 'rgba(255,220,170,0.3)' } : {}}>
+                            {item.title}
+                          </p>
+
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-xs" style={{ color: 'rgba(255,220,170,0.35)' }}>{item.time}</p>
+                            <p className="text-xs" style={{ color: 'rgba(255,220,170,0.25)' }}>{item.duration}</p>
+                          </div>
+
+                          {item.practiceType && item.practiceRefId && (
+                            <button
+                              onClick={() => onNavigate(item.practiceType as SectionId, item.practiceRefId)}
+                              className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-300 active:scale-90"
+                              style={{ background: 'rgba(201,150,90,0.08)', border: '1px solid rgba(201,150,90,0.12)' }}
+                            >
+                              <ChevronRight size={12} style={{ color: 'var(--amber)' }} />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </GlassCard>
+                )}
+
+                {/* Manual items */}
+                <GlassCard className="overflow-hidden">
                   <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: 'rgba(255,220,170,0.08)' }}>
                     <p className="font-semibold text-sm" style={{ color: 'var(--amber)' }}>Сегодня</p>
                     <p className="text-xs mt-0.5 capitalize" style={{ color: 'rgba(255,220,170,0.4)' }}>{todayLabel}</p>
                   </div>
 
-                  {planItems.length === 0 && (
+                  {manualItems.length === 0 && (
                     <p className="px-4 py-6 text-sm text-center" style={{ color: 'rgba(255,220,170,0.3)' }}>
                       Пока нет пунктов — добавьте первый
                     </p>
                   )}
 
                   {SECTIONS.map(section => {
-                    const items = planItems.filter(item => item.section === section)
+                    const items = manualItems.filter(item => item.section === section)
                     if (items.length === 0) return null
                     return (
                       <div key={section}>
@@ -269,31 +446,21 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                               className={cn('flex items-center gap-3 px-4 py-3', !isLast && 'border-b')}
                               style={{ borderColor: 'rgba(255,220,170,0.06)' }}
                             >
-                              {/* Checkbox — toggle done */}
-                              <button
-                                onClick={() => toggleDone(item.id)}
-                                className="flex-shrink-0 transition-all duration-300 active:scale-90"
-                              >
+                              <button onClick={() => toggleDone(item)} className="flex-shrink-0 transition-all duration-300 active:scale-90">
                                 {done
                                   ? <CheckCircle2 size={16} style={{ color: 'var(--amber)' }} />
                                   : <Circle size={16} style={{ color: 'rgba(255,255,255,0.18)' }} />}
                               </button>
 
-                              {/* Title */}
-                              <p
-                                className={cn('text-sm flex-1 min-w-0 truncate', done ? 'line-through' : 'text-white')}
-                                style={done ? { color: 'rgba(255,220,170,0.3)' } : {}}
-                              >
+                              <p className={cn('text-sm flex-1 min-w-0 truncate', done ? 'line-through' : 'text-white')} style={done ? { color: 'rgba(255,220,170,0.3)' } : {}}>
                                 {item.title}
                               </p>
 
-                              {/* Time + duration */}
                               <div className="text-right flex-shrink-0">
                                 <p className="text-xs" style={{ color: 'rgba(255,220,170,0.35)' }}>{item.time}</p>
                                 <p className="text-xs" style={{ color: 'rgba(255,220,170,0.25)' }}>{item.duration}</p>
                               </div>
 
-                              {/* Edit button */}
                               <button
                                 onClick={(e) => { e.stopPropagation(); openEditForm(item) }}
                                 className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-300 active:scale-90 ml-1"
@@ -316,7 +483,6 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                       {editingItem ? 'Редактировать пункт' : 'Новый пункт'}
                     </p>
 
-                    {/* Title */}
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,220,170,0.4)' }}>Название</p>
                       <input
@@ -330,7 +496,6 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                       />
                     </div>
 
-                    {/* Section */}
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,220,170,0.4)' }}>Секция</p>
                       <div className="flex gap-2">
@@ -351,49 +516,30 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                       </div>
                     </div>
 
-                    {/* Time */}
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,220,170,0.4)' }}>Время</p>
                       <div className="flex flex-wrap gap-2">
                         {TIME_PRESETS.map(t => (
-                          <button
-                            key={t}
-                            onClick={() => setFormTime(t)}
+                          <button key={t} onClick={() => setFormTime(t)}
                             className="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300"
-                            style={{
-                              background: formTime === t ? 'rgba(201,150,90,0.2)' : 'rgba(255,248,235,0.05)',
-                              border: formTime === t ? '1px solid rgba(201,150,90,0.35)' : '1px solid rgba(255,220,170,0.08)',
-                              color: formTime === t ? 'var(--amber)' : 'rgba(255,220,170,0.4)',
-                            }}
-                          >
-                            {t}
-                          </button>
+                            style={{ background: formTime === t ? 'rgba(201,150,90,0.2)' : 'rgba(255,248,235,0.05)', border: formTime === t ? '1px solid rgba(201,150,90,0.35)' : '1px solid rgba(255,220,170,0.08)', color: formTime === t ? 'var(--amber)' : 'rgba(255,220,170,0.4)' }}
+                          >{t}</button>
                         ))}
                       </div>
                     </div>
 
-                    {/* Duration */}
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,220,170,0.4)' }}>Длительность</p>
                       <div className="flex flex-wrap gap-2">
                         {DURATION_PRESETS.map(d => (
-                          <button
-                            key={d}
-                            onClick={() => setFormDuration(d)}
+                          <button key={d} onClick={() => setFormDuration(d)}
                             className="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300"
-                            style={{
-                              background: formDuration === d ? 'rgba(201,150,90,0.2)' : 'rgba(255,248,235,0.05)',
-                              border: formDuration === d ? '1px solid rgba(201,150,90,0.35)' : '1px solid rgba(255,220,170,0.08)',
-                              color: formDuration === d ? 'var(--amber)' : 'rgba(255,220,170,0.4)',
-                            }}
-                          >
-                            {d}
-                          </button>
+                            style={{ background: formDuration === d ? 'rgba(201,150,90,0.2)' : 'rgba(255,248,235,0.05)', border: formDuration === d ? '1px solid rgba(201,150,90,0.35)' : '1px solid rgba(255,220,170,0.08)', color: formDuration === d ? 'var(--amber)' : 'rgba(255,220,170,0.4)' }}
+                          >{d}</button>
                         ))}
                       </div>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex gap-2 flex-wrap">
                       {editingItem && (
                         <button
@@ -401,27 +547,19 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                           className="py-2.5 px-3 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all duration-300 active:scale-95"
                           style={{ background: 'rgba(220,60,60,0.08)', border: '1px solid rgba(220,60,60,0.15)', color: 'rgba(255,120,100,0.7)' }}
                         >
-                          <Trash2 size={13} />
-                          Удалить
+                          <Trash2 size={13} />Удалить
                         </button>
                       )}
                       <div className="flex gap-2 flex-1">
-                        <button
-                          onClick={closePlanForm}
+                        <button onClick={closePlanForm}
                           className="flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-all duration-300"
                           style={{ background: 'rgba(255,248,235,0.04)', border: '1px solid rgba(255,220,170,0.08)', color: 'rgba(255,248,235,0.35)' }}
                         >
-                          <X size={13} />
-                          Отмена
+                          <X size={13} />Отмена
                         </button>
-                        <button
-                          onClick={savePlanItem}
+                        <button onClick={savePlanItem}
                           className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 active:scale-[0.97]"
-                          style={{
-                            background: planFormValid ? 'rgba(201,150,90,0.8)' : 'rgba(255,248,235,0.06)',
-                            color: planFormValid ? 'rgba(255,240,210,0.95)' : 'rgba(255,220,170,0.25)',
-                            border: '1px solid rgba(201,150,90,0.2)',
-                          }}
+                          style={{ background: planFormValid ? 'rgba(201,150,90,0.8)' : 'rgba(255,248,235,0.06)', color: planFormValid ? 'rgba(255,240,210,0.95)' : 'rgba(255,220,170,0.25)', border: '1px solid rgba(201,150,90,0.2)' }}
                         >
                           Сохранить
                         </button>
@@ -444,21 +582,16 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
             {/* ── Напоминания ── */}
             {activeTab === 'reminders' && (
               <div className="flex flex-col gap-3 mt-2 max-w-lg">
-                {localReminders.map((reminder, i) => (
+                {storeReminders.map((reminder) => (
                   <GlassCard key={reminder.id} className="p-4">
                     <div className="flex items-center gap-3">
-                      {/* Icon */}
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: reminderStates[i] ? 'rgba(201,150,90,0.1)' : 'rgba(255,255,255,0.04)' }}>
-                        <Clock size={18} style={{ color: reminderStates[i] ? 'var(--amber)' : 'rgba(255,255,255,0.2)' }} strokeWidth={1.5} />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: reminder.isEnabled ? 'rgba(201,150,90,0.1)' : 'rgba(255,255,255,0.04)' }}>
+                        <Clock size={18} style={{ color: reminder.isEnabled ? 'var(--amber)' : 'rgba(255,255,255,0.2)' }} strokeWidth={1.5} />
                       </div>
-
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate" style={{ color: reminderStates[i] ? 'white' : 'rgba(255,255,255,0.3)' }}>{reminder.title}</p>
+                        <p className="text-sm font-medium truncate" style={{ color: reminder.isEnabled ? 'white' : 'rgba(255,255,255,0.3)' }}>{reminder.title}</p>
                         <p className="text-xs mt-0.5" style={{ color: 'rgba(255,220,170,0.3)' }}>{reminder.time} · {reminder.days.join(', ')}</p>
                       </div>
-
-                      {/* Delete */}
                       <button
                         onClick={() => deleteReminder(reminder.id)}
                         className="w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0 transition-all duration-300 active:scale-90"
@@ -466,23 +599,19 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                       >
                         <Trash2 size={13} style={{ color: 'rgba(255,100,80,0.5)' }} />
                       </button>
-
-                      {/* Toggle */}
                       <button
-                        onClick={() => setReminderStates(prev => prev.map((v, idx) => idx === i ? !v : v))}
+                        onClick={() => toggleReminder(reminder)}
                         className="relative w-12 h-6 rounded-full transition-all duration-300 flex-shrink-0"
-                        style={{ background: reminderStates[i] ? 'var(--amber)' : 'rgba(255,255,255,0.1)' }}
+                        style={{ background: reminder.isEnabled ? 'var(--amber)' : 'rgba(255,255,255,0.1)' }}
                       >
-                        <div className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-300" style={{ left: reminderStates[i] ? '26px' : '2px' }} />
+                        <div className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-300" style={{ left: reminder.isEnabled ? '26px' : '2px' }} />
                       </button>
                     </div>
                   </GlassCard>
                 ))}
 
-                {/* Add form */}
                 {showReminderForm ? (
                   <GlassCard className="p-4 flex flex-col gap-4">
-                    {/* Title */}
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,220,170,0.4)' }}>Название</p>
                       <input
@@ -496,69 +625,44 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                       />
                     </div>
 
-                    {/* Time presets */}
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,220,170,0.4)' }}>Время</p>
                       <div className="flex flex-wrap gap-2">
                         {TIME_PRESETS.map(t => (
-                          <button
-                            key={t}
-                            onClick={() => setNewTime(t)}
+                          <button key={t} onClick={() => setNewTime(t)}
                             className="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300"
-                            style={{
-                              background: newTime === t ? 'rgba(201,150,90,0.2)' : 'rgba(255,248,235,0.05)',
-                              border: newTime === t ? '1px solid rgba(201,150,90,0.35)' : '1px solid rgba(255,220,170,0.08)',
-                              color: newTime === t ? 'var(--amber)' : 'rgba(255,220,170,0.4)',
-                            }}
-                          >
-                            {t}
-                          </button>
+                            style={{ background: newTime === t ? 'rgba(201,150,90,0.2)' : 'rgba(255,248,235,0.05)', border: newTime === t ? '1px solid rgba(201,150,90,0.35)' : '1px solid rgba(255,220,170,0.08)', color: newTime === t ? 'var(--amber)' : 'rgba(255,220,170,0.4)' }}
+                          >{t}</button>
                         ))}
                       </div>
                     </div>
 
-                    {/* Days */}
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,220,170,0.4)' }}>Дни недели</p>
                       <div className="flex gap-1.5">
                         {DAY_LABELS.map(day => {
                           const active = newDays.has(day)
                           return (
-                            <button
-                              key={day}
-                              onClick={() => toggleDay(day)}
+                            <button key={day} onClick={() => toggleDay(day)}
                               className="flex-1 py-2 rounded-xl text-[11px] font-medium transition-all duration-300"
-                              style={{
-                                background: active ? 'rgba(201,150,90,0.18)' : 'rgba(255,248,235,0.04)',
-                                border: active ? '1px solid rgba(201,150,90,0.3)' : '1px solid rgba(255,220,170,0.06)',
-                                color: active ? 'var(--amber)' : 'rgba(255,220,170,0.3)',
-                              }}
-                            >
-                              {day}
-                            </button>
+                              style={{ background: active ? 'rgba(201,150,90,0.18)' : 'rgba(255,248,235,0.04)', border: active ? '1px solid rgba(201,150,90,0.3)' : '1px solid rgba(255,220,170,0.06)', color: active ? 'var(--amber)' : 'rgba(255,220,170,0.3)' }}
+                            >{day}</button>
                           )
                         })}
                       </div>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex gap-2">
                       <button
                         onClick={() => { setShowReminderForm(false); setNewTitle(''); setNewTime('08:00'); setNewDays(new Set(['Пн', 'Вт', 'Ср', 'Чт', 'Пт'])) }}
                         className="flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-all duration-300"
                         style={{ background: 'rgba(255,248,235,0.04)', border: '1px solid rgba(255,220,170,0.08)', color: 'rgba(255,248,235,0.35)' }}
                       >
-                        <X size={13} />
-                        Отмена
+                        <X size={13} />Отмена
                       </button>
-                      <button
-                        onClick={saveReminder}
+                      <button onClick={saveReminder}
                         className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 active:scale-[0.97]"
-                        style={{
-                          background: newTitle.trim() && newDays.size > 0 ? 'rgba(201,150,90,0.8)' : 'rgba(255,248,235,0.06)',
-                          color: newTitle.trim() && newDays.size > 0 ? 'rgba(255,240,210,0.95)' : 'rgba(255,220,170,0.25)',
-                          border: '1px solid rgba(201,150,90,0.2)',
-                        }}
+                        style={{ background: newTitle.trim() && newDays.size > 0 ? 'rgba(201,150,90,0.8)' : 'rgba(255,248,235,0.06)', color: newTitle.trim() && newDays.size > 0 ? 'rgba(255,240,210,0.95)' : 'rgba(255,220,170,0.25)', border: '1px solid rgba(201,150,90,0.2)' }}
                       >
                         Сохранить
                       </button>

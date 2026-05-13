@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { useWellnessState } from '@/lib/store/WellnessContext'
 import { getMoodCorrelation, offsetDateKey } from '@/lib/store/analytics'
@@ -111,20 +111,25 @@ function TrendCard({
 
 export function WellbeingTab() {
   const [days, setDays] = useState<Days>(14)
-  const { events, assessmentsByDay } = useWellnessState()
+  const { assessmentsByDay, dailySnapshots } = useWellnessState()
+  console.log('[WellbeingTab] render — snapshots:', Object.keys(dailySnapshots).length, 'assessments:', Object.keys(assessmentsByDay).length)
 
-  const dayKeys = Array.from({ length: days }, (_, i) => offsetDateKey(-(days - 1 - i)))
-  const dayLabels = dayKeys.map(k => {
-    const d = new Date(k + 'T00:00:00')
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'numeric' })
-  })
+  const dayKeys = useMemo(
+    () => Array.from({ length: days }, (_, i) => offsetDateKey(-(days - 1 - i))),
+    [days]
+  )
 
-  const moodValues = dayKeys.map(k => assessmentsByDay[k]?.mood ?? null)
-  const sleepValues = dayKeys.map(k => assessmentsByDay[k]?.sleepQuality ?? null)
-  const consValues = dayKeys.map(k => assessmentsByDay[k]?.consciousness ?? null)
+  const dayLabels = useMemo(
+    () => dayKeys.map(k => new Date(k + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'numeric' })),
+    [dayKeys]
+  )
 
-  const corr = getMoodCorrelation(events, assessmentsByDay, 'meditation')
-  const corrBreath = getMoodCorrelation(events, assessmentsByDay, 'breathing')
+  const moodValues = useMemo(() => dayKeys.map(k => assessmentsByDay[k]?.mood ?? null), [dayKeys, assessmentsByDay])
+  const sleepValues = useMemo(() => dayKeys.map(k => assessmentsByDay[k]?.sleepQuality ?? null), [dayKeys, assessmentsByDay])
+  const consValues = useMemo(() => dayKeys.map(k => assessmentsByDay[k]?.consciousness ?? null), [dayKeys, assessmentsByDay])
+
+  const corr = useMemo(() => getMoodCorrelation(dailySnapshots, 'meditation'), [dailySnapshots])
+  const corrBreath = useMemo(() => getMoodCorrelation(dailySnapshots, 'breathing'), [dailySnapshots])
 
   return (
     <div className="flex flex-col gap-3 mt-2 max-w-lg">
