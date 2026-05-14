@@ -213,12 +213,20 @@ export function useOnboarding() {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      setShow(true)
-    }
+    if (!localStorage.getItem(STORAGE_KEY)) setShow(true)
   }, [])
 
-  return { show, done: () => setShow(false) }
+  function done() {
+    localStorage.setItem(STORAGE_KEY, '1')
+    setShow(false)
+  }
+
+  function reset() {
+    localStorage.removeItem(STORAGE_KEY)
+    setShow(true)
+  }
+
+  return { show, done, reset }
 }
 
 /* ─── Step visuals ──────────────────────────────────────────────── */

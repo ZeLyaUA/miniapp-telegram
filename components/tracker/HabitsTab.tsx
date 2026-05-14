@@ -46,7 +46,12 @@ export function HabitsTab() {
         const doneToday = checkedDays[6]
 
         const Icon = iconMap[habit.icon] ?? Heart
-        const DAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+        const RU_DAYS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+        const dayLabels = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date()
+          d.setDate(d.getDate() - (6 - i))
+          return RU_DAYS[d.getDay()]
+        })
 
         return (
           <GlassCard key={habit.id} accent={doneToday ? 'amber' : 'none'} className="p-4">
@@ -108,7 +113,7 @@ export function HabitsTab() {
                       }}
                     />
                     <span className="text-[8px]" style={{ color: done ? 'rgba(255,220,170,0.5)' : 'rgba(255,220,170,0.2)' }}>
-                      {DAY_SHORT[i]}
+                      {dayLabels[i]}
                     </span>
                   </div>
                 )

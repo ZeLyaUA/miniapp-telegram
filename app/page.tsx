@@ -14,6 +14,7 @@ import { NotificationsView } from '@/components/notifications/NotificationsView'
 import { ProfileView } from '@/components/profile/ProfileView'
 import { DayCardView } from '@/components/daycard/DayCardView'
 import { useWellness, createEvent, syncEventToSupabase } from '@/lib/store/WellnessContext'
+import { useOnboarding } from '@/components/home/OnboardingTour'
 import { getStreakDays, offsetDateKey } from '@/lib/store/analytics'
 import type { TabId, SectionId } from '@/lib/types'
 
@@ -23,6 +24,7 @@ export default function Page() {
   const [initialItemId, setInitialItemId] = useState<string | null>(null)
   const [firstName, setFirstName] = useState<string | null>(null)
   const { state, dispatch } = useWellness()
+  const { show: showTour, done: tourDone, reset: tourReset } = useOnboarding()
 
   useEffect(() => {
     try {
@@ -53,6 +55,12 @@ export default function Page() {
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab)
     setActiveSection(null)
+  }
+
+  const handleShowTour = () => {
+    setActiveTab('home')
+    setActiveSection(null)
+    tourReset()
   }
 
   const renderContent = () => {
@@ -88,12 +96,14 @@ export default function Page() {
           meditationMinutesToday={state.dailySnapshots[state.todayKey]?.meditationMinutes ?? 0}
           breathingSessionsToday={state.dailySnapshots[state.todayKey]?.breathingSessionCount ?? 0}
           weekMinutes={weekMinutes}
+          showTour={showTour}
+          onTourDone={tourDone}
         />
       )
     }
     if (activeTab === 'favorites') return <FavoritesView />
     if (activeTab === 'notifications') return <NotificationsView />
-    if (activeTab === 'profile') return <ProfileView />
+    if (activeTab === 'profile') return <ProfileView onShowTour={handleShowTour} />
     return null
   }
 

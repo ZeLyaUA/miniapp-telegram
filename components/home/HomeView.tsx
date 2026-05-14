@@ -2,7 +2,7 @@
 
 import { Brain, Wind, CalendarCheck, BarChart3, Flame, Clock, ChevronRight } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
-import { OnboardingTour, useOnboarding } from './OnboardingTour'
+import { OnboardingTour } from './OnboardingTour'
 import type { SectionId } from '@/lib/types'
 
 const quickActions: { id: SectionId; label: string; icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[] = [
@@ -34,15 +34,16 @@ interface HomeViewProps {
   meditationMinutesToday?: number
   breathingSessionsToday?: number
   weekMinutes?: number
+  showTour?: boolean
+  onTourDone?: () => void
 }
 
-export function HomeView({ firstName, onSectionSelect, streak = 0, meditationMinutesToday = 0, breathingSessionsToday = 0, weekMinutes = 0 }: HomeViewProps) {
+export function HomeView({ firstName, onSectionSelect, streak = 0, meditationMinutesToday = 0, breathingSessionsToday = 0, weekMinutes = 0, showTour = false, onTourDone }: HomeViewProps) {
   const { date, weekday } = getDayCard()
-  const { show: showOnboarding, done: onboardingDone } = useOnboarding()
 
   return (
     <>
-    {showOnboarding && <OnboardingTour onDone={onboardingDone} />}
+    {showTour && onTourDone && <OnboardingTour onDone={onTourDone} />}
     <div className="h-full overflow-y-auto scrollbar-hide">
     <div className="flex flex-col gap-4 px-4 pb-28 md:pb-6 header-pt-home">
       {/* Greeting */}

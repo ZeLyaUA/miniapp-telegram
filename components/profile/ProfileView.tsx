@@ -1,6 +1,6 @@
 'use client'
 
-import { User, Flame, Clock, Trophy, ChevronRight, Bell, Palette, Globe, Info } from 'lucide-react'
+import { User, Flame, Clock, Trophy, ChevronRight, Bell, Palette, Globe, Info, Sparkles } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { dailyStats } from '@/lib/demo-data'
 
@@ -11,7 +11,11 @@ const menuItems: { label: string; icon: React.ComponentType<{ size?: number; str
   { label: 'О приложении',          icon: Info },
 ]
 
-export function ProfileView() {
+interface ProfileViewProps {
+  onShowTour: () => void
+}
+
+export function ProfileView({ onShowTour }: ProfileViewProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 pb-2 header-pt">
@@ -65,6 +69,21 @@ export function ProfileView() {
               <ChevronRight size={16} style={{ color: 'rgba(255,220,170,0.2)' }} />
             </GlassCard>
           ))}
+
+          <button
+            onClick={onShowTour}
+            className="w-full p-4 flex items-center justify-between rounded-2xl transition-all active:scale-[0.98]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(201,150,90,0.1) 0%, rgba(139,117,207,0.07) 100%)',
+              border: '1px solid rgba(201,150,90,0.18)',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <Sparkles size={16} strokeWidth={1.5} style={{ color: 'var(--amber)', opacity: 0.8 }} />
+              <span className="text-sm font-medium" style={{ color: 'rgba(255,220,170,0.85)' }}>Показать тур по приложению</span>
+            </div>
+            <ChevronRight size={16} style={{ color: 'rgba(201,150,90,0.35)' }} />
+          </button>
         </div>
       </div>
     </div>
