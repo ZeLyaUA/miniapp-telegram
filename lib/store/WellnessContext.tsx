@@ -279,6 +279,10 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
         if (remoteEvents.length > 0 || remoteState) {
           dispatch({ type: 'MERGE_REMOTE', events: remoteEvents, state: remoteState ?? persisted })
+        } else {
+          // Сервер пустой — заливаем локальные данные (первый запуск или новое устройство)
+          saveStateToSupabase(userId!, persisted)
+          // события синкаются отдельным эффектом (prevEventsLenRef)
         }
       })
     }
