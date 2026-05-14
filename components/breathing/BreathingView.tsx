@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ChevronLeft, Play, Pause, RotateCcw, Wind, ArrowUp, ArrowDown, RefreshCw, ArrowLeftRight, Film, X } from 'lucide-react'
+import { ChevronLeft, Play, Pause, RotateCcw, Wind, ArrowUp, ArrowDown, RefreshCw, ArrowLeftRight, Film, X, CheckCircle2 } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { ViewShell } from '@/components/layout/ViewShell'
 import { BreathingCircle } from './BreathingCircle'
 import { breathingPractices } from '@/lib/demo-data'
 import { breathingAudio } from '@/lib/breathingSound'
+import { useWellness } from '@/lib/store/WellnessContext'
 import type { BreathingPhase } from '@/lib/breathingSound'
 import type { BreathingPractice } from '@/lib/types'
 
@@ -19,10 +20,20 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; strokeWidth?:
 interface BreathingViewProps {
   onBack: () => void
   initialPracticeId?: string
-  onSessionComplete?: (practiceId: string, practiceName: string, rounds: number, durationSeconds: number) => void
+  onSessionStart?: (practiceId: string, practiceName: string, plannedRounds: number) => void
+  onSessionComplete?: (
+    practiceId: string,
+    practiceName: string,
+    actualRounds: number,
+    activeDurationSeconds: number,
+    targetRounds: number,
+    completedFull: boolean,
+    pausedSeconds: number,
+  ) => void
 }
 
-export function BreathingView({ onBack, initialPracticeId, onSessionComplete }: BreathingViewProps) {
+export function BreathingView({ onBack, initialPracticeId, onSessionStart, onSessionComplete }: BreathingViewProps) {
+  const { state: wellness, dispatch } = useWellness()
   const [selectedPractice, setSelectedPractice] = useState<BreathingPractice | null>(
     initialPracticeId ? (breathingPractices.find(p => p.id === initialPracticeId) ?? null) : null
   )
@@ -32,11 +43,41 @@ export function BreathingView({ onBack, initialPracticeId, onSessionComplete }: 
   const [totalSeconds, setTotalSeconds] = useState(0)
   const [round, setRound] = useState(1)
   const [isRunning, setIsRunning] = useState(false)
+  const [justCompletedFor, setJustCompletedFor] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const startedAtRef = useRef<number>(0)
+  const pausedMsRef = useRef<number>(0)
+  const pauseStartAtRef = useRef<number>(0)
+  const sessionActiveRef = useRef<boolean>(false)
+  const sessionPracticeRef = useRef<BreathingPractice | null>(null)
+  const roundRef = useRef<number>(1)
+  useEffect(() => { roundRef.current = round }, [round])
 
   const clearTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current)
+  }
+
+  const endSession = (completedFull: boolean) => {
+    if (!sessionActiveRef.current || !sessionPracticeRef.current) return
+    const practice = sessionPracticeRef.current
+    if (pauseStartAtRef.current > 0) {
+      pausedMsRef.current += Date.now() - pauseStartAtRef.current
+      pauseStartAtRef.current = 0
+    }
+    const totalMs = Date.now() - startedAtRef.current
+    const activeSeconds = Math.max(0, Math.round((totalMs - pausedMsRef.current) / 1000))
+    const pausedSeconds = Math.round(pausedMsRef.current / 1000)
+    onSessionComplete?.(
+      practice.id,
+      practice.name,
+      roundRef.current,
+      activeSeconds,
+      practice.rounds,
+      completedFull,
+      pausedSeconds,
+    )
+    sessionActiveRef.current = false
+    sessionPracticeRef.current = null
   }
 
   const goToNextPhase = (practice: BreathingPractice, currentPhase: Phase, currentRound: number) => {
@@ -53,9 +94,9 @@ export function BreathingView({ onBack, initialPracticeId, onSessionComplete }: 
     if (nextIdx >= sequence.length) {
       if (currentRound >= practice.rounds) {
         breathingAudio.playComplete()
-        const durationSeconds = Math.round((Date.now() - startedAtRef.current) / 1000)
-        onSessionComplete?.(practice.id, practice.name, currentRound, durationSeconds)
+        endSession(true)
         setPhase('idle'); setSecondsLeft(0); setTotalSeconds(0); setIsRunning(false); setRound(1)
+        setJustCompletedFor(practice.id)
         return
       }
       const next = sequence[0]
@@ -82,11 +123,39 @@ export function BreathingView({ onBack, initialPracticeId, onSessionComplete }: 
 
   const handleStart = (practice: BreathingPractice) => {
     startedAtRef.current = Date.now()
+    pausedMsRef.current = 0
+    pauseStartAtRef.current = 0
+    sessionPracticeRef.current = practice
+    sessionActiveRef.current = true
+    setJustCompletedFor(null)
+    onSessionStart?.(practice.id, practice.name, practice.rounds)
     breathingAudio.playStart()
     setTimeout(() => breathingAudio.playPhase('inhale'), 620)
     setPhase('inhale'); setSecondsLeft(practice.inhale); setTotalSeconds(practice.inhale); setRound(1); setIsRunning(true)
   }
-  const handleReset = () => { clearTimer(); setPhase('idle'); setSecondsLeft(0); setTotalSeconds(0); setRound(1); setIsRunning(false) }
+  const handleReset = () => {
+    if (sessionActiveRef.current) endSession(false)
+    clearTimer(); setPhase('idle'); setSecondsLeft(0); setTotalSeconds(0); setRound(1); setIsRunning(false)
+  }
+
+  // Track pause accumulation when user pauses/resumes mid-session.
+  useEffect(() => {
+    if (!sessionActiveRef.current) return
+    if (!isRunning) {
+      if (pauseStartAtRef.current === 0) pauseStartAtRef.current = Date.now()
+    } else if (pauseStartAtRef.current > 0) {
+      pausedMsRef.current += Date.now() - pauseStartAtRef.current
+      pauseStartAtRef.current = 0
+    }
+  }, [isRunning])
+
+  // Unmount safety: log abandoned session if user leaves view while it's running.
+  useEffect(() => {
+    return () => {
+      if (sessionActiveRef.current) endSession(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (selectedPractice) {
     const isActive = phase !== 'idle'
@@ -139,6 +208,46 @@ export function BreathingView({ onBack, initialPracticeId, onSessionComplete }: 
                   {selectedPractice.holdOut > 0 && <TimingBadge label="Задержка" seconds={selectedPractice.holdOut} />}
                 </div>
               </GlassCard>
+
+              {/* Just-completed card */}
+              {justCompletedFor === selectedPractice.id && (
+                <GlassCard accent="amber" className="p-4 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✨</span>
+                    <p className="text-white font-semibold text-sm">Сессия завершена</p>
+                  </div>
+                  {wellness.lastAutoChecks
+                    && wellness.lastAutoChecks.sessionType === 'breathing'
+                    && wellness.lastAutoChecks.refId === selectedPractice.id
+                    && (wellness.lastAutoChecks.taskTitles.length + wellness.lastAutoChecks.planItemTitles.length > 0) && (
+                    <div className="flex flex-col gap-1 mt-1">
+                      {wellness.lastAutoChecks.taskTitles.map((t, i) => (
+                        <div key={`t${i}`} className="flex items-center gap-1.5">
+                          <CheckCircle2 size={12} style={{ color: 'var(--amber)', flexShrink: 0 }} />
+                          <span style={{ color: 'rgba(255,220,170,0.85)', fontSize: 11 }}>
+                            Зачтено: <span style={{ color: 'rgba(255,248,235,0.95)' }}>{t}</span>
+                          </span>
+                        </div>
+                      ))}
+                      {wellness.lastAutoChecks.planItemTitles.map((t, i) => (
+                        <div key={`p${i}`} className="flex items-center gap-1.5">
+                          <CheckCircle2 size={12} style={{ color: 'var(--amber)', flexShrink: 0 }} />
+                          <span style={{ color: 'rgba(255,220,170,0.85)', fontSize: 11 }}>
+                            План: <span style={{ color: 'rgba(255,248,235,0.95)' }}>{t}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => { setJustCompletedFor(null); dispatch({ type: 'CLEAR_AUTO_CHECKS' }) }}
+                    className="self-end mt-1 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300"
+                    style={{ background: 'rgba(255,220,170,0.1)', color: 'rgba(255,220,170,0.7)', border: '1px solid rgba(255,220,170,0.15)' }}
+                  >
+                    Хорошо
+                  </button>
+                </GlassCard>
+              )}
 
               {/* Video demo button */}
               {selectedPractice.howTo && selectedPractice.howTo.length > 0 && (

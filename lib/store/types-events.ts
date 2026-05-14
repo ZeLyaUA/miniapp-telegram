@@ -1,10 +1,12 @@
 export type WellnessEventType =
+  | 'session_started'
   | 'breathing_session_completed'
   | 'meditation_session_completed'
   | 'day_task_toggled'
   | 'plan_item_toggled'
   | 'daily_assessment_saved'
   | 'pillar_score_saved'
+  | 'pillar_score_cleared'
   | 'program_started'
   | 'program_day_completed'
   | 'habit_checked'
@@ -16,21 +18,34 @@ interface WellnessEventBase {
   dateKey: string     // YYYY-MM-DD local time
 }
 
+export interface SessionStartedEvent extends WellnessEventBase {
+  type: 'session_started'
+  sessionType: 'breathing' | 'meditation'
+  refId: string
+  refName: string
+  plannedRounds?: number      // breathing
+  plannedMinutes?: number     // meditation
+}
+
 export interface BreathingCompletedEvent extends WellnessEventBase {
   type: 'breathing_session_completed'
   practiceId: string
   practiceName: string
-  rounds: number
-  durationSeconds: number
+  rounds: number               // actual rounds reached
+  durationSeconds: number      // active time, pauses excluded
+  targetRounds?: number        // planned rounds
+  completedFull?: boolean      // reached all targetRounds
+  pausedSeconds?: number       // total time paused
 }
 
 export interface MeditationCompletedEvent extends WellnessEventBase {
   type: 'meditation_session_completed'
   sessionId: string
   sessionTitle: string
-  durationMinutes: number
+  durationMinutes: number       // planned
   completedFull: boolean
-  actualDurationMinutes: number
+  actualDurationMinutes: number // active time
+  pausedSeconds?: number        // total time paused
 }
 
 export interface DayTaskToggledEvent extends WellnessEventBase {
@@ -53,12 +68,21 @@ export interface DailyAssessmentSavedEvent extends WellnessEventBase {
   consciousness: number | null
   mood: 0 | 1 | 2 | null
   sleepQuality: 0 | 1 | 2 | null
+  energy?: number | null
+  water?: number | null
+  journal?: string | null
 }
 
 export interface PillarScoreSavedEvent extends WellnessEventBase {
   type: 'pillar_score_saved'
   pillarId: string
   score: number
+  weekNumber: number
+}
+
+export interface PillarScoreClearedEvent extends WellnessEventBase {
+  type: 'pillar_score_cleared'
+  pillarId: string
   weekNumber: number
 }
 
@@ -82,12 +106,14 @@ export interface HabitCheckedEvent extends WellnessEventBase {
 }
 
 export type WellnessEvent =
+  | SessionStartedEvent
   | BreathingCompletedEvent
   | MeditationCompletedEvent
   | DayTaskToggledEvent
   | PlanItemToggledEvent
   | DailyAssessmentSavedEvent
   | PillarScoreSavedEvent
+  | PillarScoreClearedEvent
   | ProgramStartedEvent
   | ProgramDayCompletedEvent
   | HabitCheckedEvent

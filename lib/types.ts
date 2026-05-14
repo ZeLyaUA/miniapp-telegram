@@ -1,11 +1,22 @@
 export type TabId = 'home' | 'favorites' | 'notifications' | 'profile'
 export type SectionId = 'meditation' | 'breathing' | 'plan' | 'tracker' | 'daycard'
 
+export type PillarId = 'breathing' | 'smile' | 'nutrition' | 'acceptance' | 'silence'
+
+export interface TaskAutoSource {
+  type: 'breathing' | 'meditation'
+  refId: string
+  minMinutes?: number
+}
+
 export interface DayTask {
   id: string
   title: string
   time?: string
   done: boolean
+  pillarTags?: PillarId[]
+  weight?: number
+  autoSource?: TaskAutoSource
 }
 
 export interface DayBlock {
@@ -150,8 +161,11 @@ export interface ActiveProgramState {
 
 export interface Assessment {
   consciousness: number | null  // 1–10
-  mood: 0 | 1 | 2 | null       // 0=плохо, 1=средне, 2=хорошо
+  mood: 0 | 1 | 2 | null        // 0=плохо, 1=средне, 2=хорошо
   sleepQuality: 0 | 1 | 2 | null
+  energy: number | null         // 1–10
+  water: number | null          // 0–8 cups
+  journal: string | null        // short reflection
 }
 
 export interface HabitDef {

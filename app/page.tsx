@@ -72,8 +72,11 @@ export default function Page() {
           initialSessionId={initialItemId ?? undefined}
           streak={streak}
           favoriteIds={state.favoriteMeditationIds}
-          onSessionComplete={(sessionId, sessionTitle, durationMinutes, completedFull, actualMinutes) => {
-            logEvent({ type: 'meditation_session_completed', sessionId, sessionTitle, durationMinutes, completedFull, actualDurationMinutes: actualMinutes })
+          onSessionStart={(sessionId, sessionTitle, plannedMinutes) => {
+            logEvent({ type: 'session_started', sessionType: 'meditation', refId: sessionId, refName: sessionTitle, plannedMinutes })
+          }}
+          onSessionComplete={(sessionId, sessionTitle, durationMinutes, completedFull, actualMinutes, pausedSeconds) => {
+            logEvent({ type: 'meditation_session_completed', sessionId, sessionTitle, durationMinutes, completedFull, actualDurationMinutes: actualMinutes, pausedSeconds })
           }}
         />
       )
@@ -81,8 +84,11 @@ export default function Page() {
         <BreathingView
           onBack={() => { setInitialItemId(null); setActiveSection(null) }}
           initialPracticeId={initialItemId ?? undefined}
-          onSessionComplete={(practiceId, practiceName, rounds, durationSeconds) => {
-            logEvent({ type: 'breathing_session_completed', practiceId, practiceName, rounds, durationSeconds })
+          onSessionStart={(practiceId, practiceName, plannedRounds) => {
+            logEvent({ type: 'session_started', sessionType: 'breathing', refId: practiceId, refName: practiceName, plannedRounds })
+          }}
+          onSessionComplete={(practiceId, practiceName, rounds, durationSeconds, targetRounds, completedFull, pausedSeconds) => {
+            logEvent({ type: 'breathing_session_completed', practiceId, practiceName, rounds, durationSeconds, targetRounds, completedFull, pausedSeconds })
           }}
         />
       )

@@ -3,7 +3,7 @@
 import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react'
 import { retrieveLaunchParams } from '@telegram-apps/sdk-react'
 import type { WellnessEvent, WellnessEventPayload } from './types-events'
-import type { StorePlanItem, ActiveProgramState, Reminder, HabitDef, Assessment } from '../types'
+import type { StorePlanItem, ActiveProgramState, Reminder, HabitDef, Assessment, DayTask } from '../types'
 import {
   loadEventsFromLS, saveEventsToLS,
   loadStateFromLS, saveStateToLS,
@@ -12,7 +12,63 @@ import {
   type PersistedState,
 } from './persistence'
 import { todayKey, computeAllSnapshots, computeDailySnapshot } from './analytics'
+import { dayCardBlocks } from '../demo-data'
 import type { DailySnapshot } from '../types'
+
+// ── Auto-check resolution ─────────────────────────────────────────────────────
+
+export interface AutoChecksNotice {
+  sessionEventId: string
+  sessionType: 'breathing' | 'meditation'
+  refId: string
+  taskIds: string[]
+  taskTitles: string[]
+  planItemIds: string[]
+  planItemTitles: string[]
+}
+
+function findDayTasksByPractice(sessionType: 'breathing' | 'meditation', refId: string): DayTask[] {
+  const matches: DayTask[] = []
+  for (const block of dayCardBlocks) {
+    for (const task of block.tasks) {
+      if (task.autoSource?.type === sessionType && task.autoSource.refId === refId) {
+        matches.push(task)
+      }
+    }
+  }
+  return matches
+}
+
+function resolveSessionAutoChecks(
+  sessionType: 'breathing' | 'meditation',
+  refId: string,
+  completedFull: boolean,
+  activeMinutes: number,
+  doneTaskIds: string[],
+  planItems: StorePlanItem[],
+  donePlanIds: string[],
+): { dayTaskIds: string[]; taskTitles: string[]; planItemIds: string[]; planItemTitles: string[] } {
+  const dayTasks = findDayTasksByPractice(sessionType, refId)
+  const dayTaskIds: string[] = []
+  const taskTitles: string[] = []
+  for (const t of dayTasks) {
+    if (doneTaskIds.includes(t.id)) continue
+    const minM = t.autoSource?.minMinutes
+    const passes = minM != null ? activeMinutes >= minM : completedFull
+    if (passes) { dayTaskIds.push(t.id); taskTitles.push(t.title) }
+  }
+
+  const planMatches = planItems.filter(p => p.practiceType === sessionType && p.practiceRefId === refId)
+  const planItemIds: string[] = []
+  const planItemTitles: string[] = []
+  for (const p of planMatches) {
+    if (donePlanIds.includes(p.id)) continue
+    if (!completedFull) continue   // plan items: strict — only on full completion
+    planItemIds.push(p.id); planItemTitles.push(p.title)
+  }
+
+  return { dayTaskIds, taskTitles, planItemIds, planItemTitles }
+}
 
 // ── Store shape ───────────────────────────────────────────────────────────────
 
@@ -33,6 +89,8 @@ export interface WellnessStore {
   favoriteMeditationIds: string[]
   reminders: Reminder[]
   habits: HabitDef[]
+  // Transient — surfaced to UI right after a session completes
+  lastAutoChecks: AutoChecksNotice | null
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -54,6 +112,7 @@ type Action =
   | { type: 'UPDATE_REMINDER'; reminder: Reminder }
   | { type: 'DELETE_REMINDER'; id: string }
   | { type: 'CHECK_HABIT'; event: WellnessEvent }
+  | { type: 'CLEAR_AUTO_CHECKS' }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
@@ -74,7 +133,7 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
   switch (action.type) {
     case 'INIT': {
       const persisted = fromPersistedState(action.state)
-      const snaps = computeAllSnapshots(action.events, persisted.assessmentsByDay)
+      const snaps = computeAllSnapshots(action.events, persisted.assessmentsByDay, persisted.doneTasksByDay)
       return {
         ...state,
         userId: action.userId,
@@ -94,17 +153,62 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
         ...state,
         events: merged,
         ...persisted,
-        dailySnapshots: computeAllSnapshots(merged, persisted.assessmentsByDay),
+        dailySnapshots: computeAllSnapshots(merged, persisted.assessmentsByDay, persisted.doneTasksByDay),
       }
     }
 
     case 'LOG_EVENT': {
-      const newEvents = [...state.events, action.event]
-      const updatedSnap = computeDailySnapshot(newEvents, state.assessmentsByDay, action.event.dateKey)
+      const event = action.event
+      const newEvents = [...state.events, event]
+      let doneTasksByDay = state.doneTasksByDay
+      let donePlanItemsByDay = state.donePlanItemsByDay
+      let lastAutoChecks: AutoChecksNotice | null = state.lastAutoChecks
+
+      if (event.type === 'breathing_session_completed' || event.type === 'meditation_session_completed') {
+        const sessionType: 'breathing' | 'meditation' =
+          event.type === 'breathing_session_completed' ? 'breathing' : 'meditation'
+        const refId = event.type === 'breathing_session_completed' ? event.practiceId : event.sessionId
+        const completedFull = event.type === 'breathing_session_completed'
+          ? (event.completedFull ?? true)
+          : event.completedFull
+        const activeMinutes = event.type === 'breathing_session_completed'
+          ? event.durationSeconds / 60
+          : event.actualDurationMinutes
+
+        const doneTasks = doneTasksByDay[event.dateKey] ?? []
+        const donePlans = donePlanItemsByDay[event.dateKey] ?? []
+        const checks = resolveSessionAutoChecks(
+          sessionType, refId, completedFull, activeMinutes,
+          doneTasks, state.planItems, donePlans,
+        )
+
+        if (checks.dayTaskIds.length > 0) {
+          doneTasksByDay = { ...doneTasksByDay, [event.dateKey]: [...doneTasks, ...checks.dayTaskIds] }
+        }
+        if (checks.planItemIds.length > 0) {
+          donePlanItemsByDay = { ...donePlanItemsByDay, [event.dateKey]: [...donePlans, ...checks.planItemIds] }
+        }
+        if (checks.dayTaskIds.length > 0 || checks.planItemIds.length > 0) {
+          lastAutoChecks = {
+            sessionEventId: event.id,
+            sessionType,
+            refId,
+            taskIds: checks.dayTaskIds,
+            taskTitles: checks.taskTitles,
+            planItemIds: checks.planItemIds,
+            planItemTitles: checks.planItemTitles,
+          }
+        }
+      }
+
+      const updatedSnap = computeDailySnapshot(newEvents, state.assessmentsByDay, doneTasksByDay, event.dateKey)
       return {
         ...state,
         events: newEvents,
-        dailySnapshots: { ...state.dailySnapshots, [action.event.dateKey]: updatedSnap },
+        doneTasksByDay,
+        donePlanItemsByDay,
+        lastAutoChecks,
+        dailySnapshots: { ...state.dailySnapshots, [event.dateKey]: updatedSnap },
       }
     }
 
@@ -114,15 +218,18 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
       const next = idx >= 0
         ? current.filter(id => id !== action.taskId)
         : [...current, action.taskId]
+      const doneTasksByDay = { ...state.doneTasksByDay, [action.dateKey]: next }
+      const updatedSnap = computeDailySnapshot(state.events, state.assessmentsByDay, doneTasksByDay, action.dateKey)
       return {
         ...state,
-        doneTasksByDay: { ...state.doneTasksByDay, [action.dateKey]: next },
+        doneTasksByDay,
+        dailySnapshots: { ...state.dailySnapshots, [action.dateKey]: updatedSnap },
       }
     }
 
     case 'SAVE_ASSESSMENT': {
       const newAssessments = { ...state.assessmentsByDay, [action.dateKey]: action.assessment }
-      const updatedSnap = computeDailySnapshot(state.events, newAssessments, action.dateKey)
+      const updatedSnap = computeDailySnapshot(state.events, newAssessments, state.doneTasksByDay, action.dateKey)
       return {
         ...state,
         assessmentsByDay: newAssessments,
@@ -148,9 +255,27 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
       const next = idx >= 0
         ? current.filter(id => id !== action.itemId)
         : [...current, action.itemId]
+      // Ripple: when manually checking a plan item linked to a practice, also auto-check
+      // matching day-card tasks (in the "done" direction only — uncheck does not propagate).
+      let doneTasksByDay = state.doneTasksByDay
+      if (idx < 0) {
+        const planItem = state.planItems.find(p => p.id === action.itemId)
+        if (planItem?.practiceType && planItem.practiceRefId) {
+          const matches = findDayTasksByPractice(planItem.practiceType, planItem.practiceRefId)
+          const dayDone = doneTasksByDay[action.dateKey] ?? []
+          const newIds = matches.map(t => t.id).filter(id => !dayDone.includes(id))
+          if (newIds.length > 0) {
+            doneTasksByDay = { ...doneTasksByDay, [action.dateKey]: [...dayDone, ...newIds] }
+          }
+        }
+      }
+      const donePlanItemsByDay = { ...state.donePlanItemsByDay, [action.dateKey]: next }
+      const updatedSnap = computeDailySnapshot(state.events, state.assessmentsByDay, doneTasksByDay, action.dateKey)
       return {
         ...state,
-        donePlanItemsByDay: { ...state.donePlanItemsByDay, [action.dateKey]: next },
+        doneTasksByDay,
+        donePlanItemsByDay,
+        dailySnapshots: { ...state.dailySnapshots, [action.dateKey]: updatedSnap },
       }
     }
 
@@ -197,13 +322,16 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
 
     case 'CHECK_HABIT': {
       const newEvents = [...state.events, action.event]
-      const updatedSnap = computeDailySnapshot(newEvents, state.assessmentsByDay, action.event.dateKey)
+      const updatedSnap = computeDailySnapshot(newEvents, state.assessmentsByDay, state.doneTasksByDay, action.event.dateKey)
       return {
         ...state,
         events: newEvents,
         dailySnapshots: { ...state.dailySnapshots, [action.event.dateKey]: updatedSnap },
       }
     }
+
+    case 'CLEAR_AUTO_CHECKS':
+      return { ...state, lastAutoChecks: null }
 
     default:
       return state
@@ -250,6 +378,7 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
     favoriteMeditationIds: [],
     reminders: [],
     habits: [],
+    lastAutoChecks: null,
   }
 
   const [state, dispatch] = useReducer(reducer, initial)

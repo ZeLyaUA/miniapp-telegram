@@ -141,7 +141,7 @@ function BarChart({
 
 export function StatsTabInner() {
   const [period, setPeriod] = useState<Period>("week");
-  const { events, assessmentsByDay, dailySnapshots, todayKey } =
+  const { events, assessmentsByDay, doneTasksByDay, dailySnapshots, todayKey } =
     useWellnessState();
 
   const { start: curStart, end: curEnd } =
@@ -158,8 +158,8 @@ export function StatsTabInner() {
         : getYearPeriod(1);
 
   const current = useMemo(
-    () => getPeriodStats(events, assessmentsByDay, curStart, curEnd, "Текущий"),
-    [events, assessmentsByDay, curStart, curEnd],
+    () => getPeriodStats(events, assessmentsByDay, doneTasksByDay, curStart, curEnd, "Текущий"),
+    [events, assessmentsByDay, doneTasksByDay, curStart, curEnd],
   );
 
   const previous = useMemo(
@@ -167,11 +167,12 @@ export function StatsTabInner() {
       getPeriodStats(
         events,
         assessmentsByDay,
+        doneTasksByDay,
         prevStart,
         prevEnd,
         "Предыдущий",
       ),
-    [events, assessmentsByDay, prevStart, prevEnd],
+    [events, assessmentsByDay, doneTasksByDay, prevStart, prevEnd],
   );
 
   const streak = useMemo(

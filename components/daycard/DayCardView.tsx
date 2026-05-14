@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Droplet, RotateCcw } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { dayCardBlocks, weekTheme } from '@/lib/demo-data'
 import { useWellness, createEvent, syncEventToSupabase, syncStateToSupabase } from '@/lib/store/WellnessContext'
-import type { WellnessEvent } from '@/lib/store/types-events'
-import type { DayBlock } from '@/lib/types'
+import { getEffectivePillarScores } from '@/lib/store/analytics'
+import type { DayBlock, PillarId, Assessment } from '@/lib/types'
 
 interface DayCardViewProps {
   onBack: () => void
@@ -186,44 +186,60 @@ function ProgressCard({ doneIds }: { doneIds: Set<string> }) {
   )
 }
 
-// Consciousness score + mood + sleep card
+// 1–10 selector reused by consciousness/energy.
+function ScaleRow({ value, onPick, color }: { value: number | null; onPick: (n: number) => void; color: string }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
+        <button
+          key={n}
+          onClick={() => onPick(n)}
+          className="w-8 h-8 rounded-full text-xs font-medium transition-all duration-200"
+          style={value === n ? {
+            background: color,
+            color: '#09070F',
+            boxShadow: '0 0 10px ' + color.replace(')', ',0.4)').replace('rgb', 'rgba'),
+          } : {
+            background: 'rgba(255,248,235,0.05)',
+            border: '1px solid rgba(255,220,170,0.1)',
+            color: 'rgba(255,248,235,0.5)',
+          }}
+        >
+          {n}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Day-end assessment: consciousness, energy, mood, sleep, water, journal.
 function AssessmentCard({
   score, onScore,
+  energy, onEnergy,
   mood, onMood,
   sleep, onSleep,
+  water, onWater,
+  journal, onJournal,
 }: {
   score: number | null; onScore: (n: number) => void
+  energy: number | null; onEnergy: (n: number) => void
   mood: number | null; onMood: (n: number) => void
   sleep: number | null; onSleep: (n: number) => void
+  water: number | null; onWater: (n: number) => void
+  journal: string | null; onJournal: (s: string) => void
 }) {
   return (
-    <GlassCard className="p-4">
-      {/* Score row */}
-      <div className="mb-4">
+    <GlassCard className="p-4 flex flex-col gap-4">
+      <div>
         <p className="label-upper mb-2.5">Оценка осознанности</p>
-        <div className="flex flex-wrap gap-1.5">
-          {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
-            <button
-              key={n}
-              onClick={() => onScore(n)}
-              className="w-8 h-8 rounded-full text-xs font-medium transition-all duration-200"
-              style={score === n ? {
-                background: 'var(--amber)',
-                color: '#09070F',
-                boxShadow: 'var(--glow-amber)',
-              } : {
-                background: 'rgba(255,248,235,0.05)',
-                border: '1px solid rgba(255,220,170,0.1)',
-                color: 'rgba(255,248,235,0.5)',
-              }}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
+        <ScaleRow value={score} onPick={onScore} color="var(--amber)" />
       </div>
 
-      {/* Mood + Sleep row */}
+      <div>
+        <p className="label-upper mb-2.5">Уровень энергии</p>
+        <ScaleRow value={energy} onPick={onEnergy} color="rgba(220,150,90,1)" />
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="label-upper mb-2.5">Самочувствие</p>
@@ -283,42 +299,128 @@ function AssessmentCard({
           </div>
         </div>
       </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2.5">
+          <p className="label-upper">Вода</p>
+          <span className="text-xs font-medium" style={{ color: 'rgba(139,180,220,0.7)' }}>
+            {water ?? 0} / 8
+          </span>
+        </div>
+        <div className="flex gap-1.5">
+          {Array.from({ length: 8 }, (_, i) => i + 1).map(n => {
+            const filled = (water ?? 0) >= n
+            return (
+              <button
+                key={n}
+                onClick={() => onWater(water === n ? n - 1 : n)}
+                className="flex-1 h-7 rounded-lg flex items-center justify-center transition-all duration-200"
+                style={filled ? {
+                  background: 'rgba(139,180,220,0.18)',
+                  border: '1px solid rgba(139,180,220,0.35)',
+                } : {
+                  background: 'rgba(255,248,235,0.04)',
+                  border: '1px solid rgba(255,220,170,0.06)',
+                }}
+              >
+                <Droplet
+                  size={12}
+                  style={{
+                    color: filled ? 'rgba(139,180,220,0.95)' : 'rgba(255,248,235,0.25)',
+                    fill: filled ? 'rgba(139,180,220,0.4)' : 'transparent',
+                  }}
+                />
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div>
+        <p className="label-upper mb-2.5">Взгляд внутрь</p>
+        <textarea
+          value={journal ?? ''}
+          onChange={e => onJournal(e.target.value.slice(0, 280))}
+          placeholder="Что важно вспомнить из этого дня?"
+          rows={2}
+          className="w-full rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none resize-none"
+          style={{ background: 'rgba(255,248,235,0.05)', border: '1px solid rgba(255,220,170,0.12)' }}
+        />
+        <p className="text-[10px] text-right mt-1" style={{ color: 'rgba(255,220,170,0.3)' }}>
+          {(journal ?? '').length}/280
+        </p>
+      </div>
     </GlassCard>
   )
 }
 
-// Weekly pillars card
+// Per-day pillar parameters — auto-derived from tasks, overridable.
 function PillarsCard({
-  pillarScores,
-  onPillarScore,
+  pillarData,
+  onSet,
+  onReset,
 }: {
-  pillarScores: Record<string, number | null>
-  onPillarScore: (id: string, score: number) => void
+  pillarData: { id: PillarId; label: string; score: number | null; isOverride: boolean }[]
+  onSet: (id: PillarId, score: number) => void
+  onReset: (id: PillarId) => void
 }) {
   return (
     <GlassCard accent="violet" className="p-4">
-      <p className="label-upper mb-3">Параметры недели</p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="label-upper">Параметры дня</p>
+        <span className="text-[10px]" style={{ color: 'rgba(255,220,170,0.35)' }}>столпы недели</span>
+      </div>
       <div className="flex flex-col gap-3">
-        {weekTheme.pillars.map(({ id, label }) => {
-          const active = pillarScores[id] ?? null
+        {pillarData.map(({ id, label, score, isOverride }) => {
+          const display = score != null ? Math.round(score) : null
           return (
             <div key={id}>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs capitalize" style={{ color: 'rgba(255,248,235,0.5)' }}>{label}</span>
-                {active !== null && (
-                  <span className="text-xs font-medium" style={{ color: 'var(--violet)' }}>{active}/10</span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs capitalize" style={{ color: 'rgba(255,248,235,0.55)' }}>{label}</span>
+                  <span
+                    className="text-[9px] px-1.5 py-0.5 rounded-full font-medium uppercase tracking-wider"
+                    style={isOverride ? {
+                      background: 'rgba(139,117,207,0.18)',
+                      color: 'rgba(139,117,207,0.95)',
+                      border: '1px solid rgba(139,117,207,0.25)',
+                    } : {
+                      background: 'rgba(255,248,235,0.04)',
+                      color: 'rgba(255,220,170,0.4)',
+                      border: '1px solid rgba(255,220,170,0.08)',
+                    }}
+                  >
+                    {isOverride ? 'ручной' : 'авто'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {score != null && (
+                    <span className="text-xs font-medium" style={{ color: 'var(--violet)' }}>
+                      {score.toFixed(1)}/10
+                    </span>
+                  )}
+                  {isOverride && (
+                    <button
+                      onClick={() => onReset(id)}
+                      className="w-5 h-5 flex items-center justify-center rounded-full transition-all duration-200 active:scale-90"
+                      style={{ background: 'rgba(255,248,235,0.05)', border: '1px solid rgba(255,220,170,0.1)' }}
+                      title="Вернуть к авто"
+                    >
+                      <RotateCcw size={9} style={{ color: 'rgba(255,220,170,0.5)' }} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex gap-1">
                 {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
                   <button
                     key={n}
-                    onClick={() => onPillarScore(id, n)}
+                    onClick={() => onSet(id, n)}
                     className="flex-1 rounded-full transition-all duration-150"
                     style={{
                       height: 6,
-                      background: active !== null && n <= active
-                        ? 'var(--violet)'
+                      background: display != null && n <= display
+                        ? (isOverride ? 'var(--violet)' : 'rgba(139,117,207,0.55)')
                         : 'rgba(139,117,207,0.12)',
                     }}
                   />
@@ -344,22 +446,23 @@ export function DayCardView({ onBack }: DayCardViewProps) {
 
   const currentDateKey = getDateKey(dayOffset)
   const doneIds = new Set(state.doneTasksByDay[currentDateKey] ?? [])
-  const assessment = state.assessmentsByDay[currentDateKey] ?? { consciousness: null, mood: null, sleepQuality: null }
+  const emptyAssessment: Assessment = {
+    consciousness: null, mood: null, sleepQuality: null,
+    energy: null, water: null, journal: null,
+  }
+  const assessment: Assessment = { ...emptyAssessment, ...(state.assessmentsByDay[currentDateKey] ?? {}) }
 
-  // Compute pillar scores for current week from events (last saved value per pillar)
-  const pillarScores: Record<string, number | null> = Object.fromEntries(
-    weekTheme.pillars.map(p => {
-      const lastEvent = [...state.events].reverse().find(
-        e => e.type === 'pillar_score_saved' &&
-          (e as Extract<WellnessEvent, { type: 'pillar_score_saved' }>).pillarId === p.id &&
-          (e as Extract<WellnessEvent, { type: 'pillar_score_saved' }>).weekNumber === weekTheme.week
-      )
-      const score = lastEvent
-        ? (lastEvent as Extract<WellnessEvent, { type: 'pillar_score_saved' }>).score
-        : null
-      return [p.id, score]
-    })
-  )
+  // Per-day effective pillar scores (auto from done tasks, override from events).
+  const doneTaskIdsForDay = Array.from(doneIds)
+  const { scores: effectiveScores, overrides: overrideFlags } =
+    getEffectivePillarScores(state.events, doneTaskIdsForDay, currentDateKey)
+
+  const pillarData = weekTheme.pillars.map(p => ({
+    id: p.id as PillarId,
+    label: p.label,
+    score: effectiveScores[p.id] ?? null,
+    isOverride: overrideFlags[p.id] ?? false,
+  }))
 
   const { date, label } = getDayInfo(dayOffset)
 
@@ -380,25 +483,38 @@ export function DayCardView({ onBack }: DayCardViewProps) {
     setTimeout(syncState, 100)
   }, [currentDateKey, dispatch, doneIds, state.userId, syncState])
 
-  const saveAssessment = useCallback((updates: Partial<typeof assessment>) => {
-    const next = { ...assessment, ...updates }
+  const saveAssessment = useCallback((updates: Partial<Assessment>) => {
+    const next: Assessment = { ...assessment, ...updates }
     dispatch({ type: 'SAVE_ASSESSMENT', dateKey: currentDateKey, assessment: next })
     const event = createEvent({
       type: 'daily_assessment_saved',
       consciousness: next.consciousness,
       mood: next.mood as 0 | 1 | 2 | null,
       sleepQuality: next.sleepQuality as 0 | 1 | 2 | null,
+      energy: next.energy,
+      water: next.water,
+      journal: next.journal,
     })
     dispatch({ type: 'LOG_EVENT', event })
     syncEventToSupabase(state.userId, event)
     setTimeout(syncState, 100)
   }, [assessment, currentDateKey, dispatch, state.userId, syncState])
 
-  const setPillarScore = useCallback((id: string, s: number) => {
+  const setPillarScore = useCallback((id: PillarId, s: number) => {
     const event = createEvent({
       type: 'pillar_score_saved',
       pillarId: id,
       score: s,
+      weekNumber: weekTheme.week,
+    })
+    dispatch({ type: 'LOG_EVENT', event })
+    syncEventToSupabase(state.userId, event)
+  }, [dispatch, state.userId])
+
+  const clearPillarOverride = useCallback((id: PillarId) => {
+    const event = createEvent({
+      type: 'pillar_score_cleared',
+      pillarId: id,
       weekNumber: weekTheme.week,
     })
     dispatch({ type: 'LOG_EVENT', event })
@@ -476,10 +592,13 @@ export function DayCardView({ onBack }: DayCardViewProps) {
         <ProgressCard doneIds={doneIds} />
         <AssessmentCard
           score={assessment.consciousness} onScore={n => saveAssessment({ consciousness: n })}
+          energy={assessment.energy} onEnergy={n => saveAssessment({ energy: n })}
           mood={assessment.mood} onMood={n => saveAssessment({ mood: n as 0 | 1 | 2 })}
           sleep={assessment.sleepQuality} onSleep={n => saveAssessment({ sleepQuality: n as 0 | 1 | 2 })}
+          water={assessment.water} onWater={n => saveAssessment({ water: n })}
+          journal={assessment.journal} onJournal={s => saveAssessment({ journal: s })}
         />
-        <PillarsCard pillarScores={pillarScores} onPillarScore={setPillarScore} />
+        <PillarsCard pillarData={pillarData} onSet={setPillarScore} onReset={clearPillarOverride} />
       </div>
     </div>
   )

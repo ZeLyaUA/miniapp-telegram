@@ -22,12 +22,20 @@ const levelLabel: Record<MeditationSession['level'], string> = {
 interface MeditationViewProps {
   onBack: () => void
   initialSessionId?: string
-  onSessionComplete?: (sessionId: string, sessionTitle: string, durationMinutes: number, completedFull: boolean, actualMinutes: number) => void
+  onSessionStart?: (sessionId: string, sessionTitle: string, plannedMinutes: number) => void
+  onSessionComplete?: (
+    sessionId: string,
+    sessionTitle: string,
+    durationMinutes: number,
+    completedFull: boolean,
+    actualMinutes: number,
+    pausedSeconds: number,
+  ) => void
   streak?: number
   favoriteIds?: string[]
 }
 
-export function MeditationView({ onBack, initialSessionId, onSessionComplete, streak = 0, favoriteIds }: MeditationViewProps) {
+export function MeditationView({ onBack, initialSessionId, onSessionStart, onSessionComplete, streak = 0, favoriteIds }: MeditationViewProps) {
   const [selectedCategory, setSelectedCategory] = useState('quick')
   const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(
     initialSessionId ? (meditationSessions.find(s => s.id === initialSessionId) ?? null) : null
@@ -46,6 +54,7 @@ export function MeditationView({ onBack, initialSessionId, onSessionComplete, st
       <SessionPlayer
         session={activeSession}
         onClose={() => setActiveSession(null)}
+        onStart={onSessionStart}
         onComplete={onSessionComplete}
         streak={streak}
       />

@@ -1,5 +1,82 @@
 import type { WellnessEvent } from './types-events'
-import type { DailySnapshot, PeriodStats, ActivityLogEntry, Assessment } from '../types'
+import type { DailySnapshot, PeriodStats, ActivityLogEntry, Assessment, PillarId } from '../types'
+import { dayCardBlocks } from '../demo-data'
+
+// ── Pillar scoring (per-day) ──────────────────────────────────────────────────
+
+interface PillarTaskAggregate {
+  totalWeight: number
+  taskWeights: Map<string, number>   // taskId → weight
+}
+
+const PILLAR_AGG_CACHE = new Map<PillarId, PillarTaskAggregate>()
+
+function getPillarAggregate(pillarId: PillarId): PillarTaskAggregate {
+  const cached = PILLAR_AGG_CACHE.get(pillarId)
+  if (cached) return cached
+  const taskWeights = new Map<string, number>()
+  let totalWeight = 0
+  for (const block of dayCardBlocks) {
+    for (const task of block.tasks) {
+      if (task.pillarTags?.includes(pillarId)) {
+        const w = task.weight ?? 1
+        taskWeights.set(task.id, w)
+        totalWeight += w
+      }
+    }
+  }
+  const agg = { totalWeight, taskWeights }
+  PILLAR_AGG_CACHE.set(pillarId, agg)
+  return agg
+}
+
+export function getAutoPillarScore(pillarId: PillarId, doneTaskIds: string[]): number | null {
+  const agg = getPillarAggregate(pillarId)
+  if (agg.totalWeight === 0) return null
+  let earned = 0
+  for (const id of doneTaskIds) {
+    const w = agg.taskWeights.get(id)
+    if (w != null) earned += w
+  }
+  return Math.round((earned / agg.totalWeight) * 10 * 10) / 10
+}
+
+export function getManualPillarOverride(
+  events: WellnessEvent[],
+  pillarId: PillarId,
+  dateKey: string,
+): number | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]
+    if (e.dateKey !== dateKey) continue
+    if (e.type === 'pillar_score_saved' && e.pillarId === pillarId) return e.score
+    if (e.type === 'pillar_score_cleared' && e.pillarId === pillarId) return null
+  }
+  return null
+}
+
+const ALL_PILLARS: PillarId[] = ['breathing', 'smile', 'nutrition', 'acceptance', 'silence']
+
+export function getEffectivePillarScores(
+  events: WellnessEvent[],
+  doneTaskIds: string[],
+  dateKey: string,
+): { scores: Record<string, number>; overrides: Record<string, boolean> } {
+  const scores: Record<string, number> = {}
+  const overrides: Record<string, boolean> = {}
+  for (const p of ALL_PILLARS) {
+    const manual = getManualPillarOverride(events, p, dateKey)
+    if (manual != null) {
+      scores[p] = manual
+      overrides[p] = true
+    } else {
+      const auto = getAutoPillarScore(p, doneTaskIds)
+      if (auto != null) scores[p] = auto
+      overrides[p] = false
+    }
+  }
+  return { scores, overrides }
+}
 
 export function toDateKey(date: Date): string {
   const y = date.getFullYear()
@@ -37,6 +114,7 @@ function dateRange(startKey: string, endKey: string): string[] {
 export function computeDailySnapshot(
   events: WellnessEvent[],
   assessmentsByDay: Record<string, Assessment>,
+  doneTasksByDay: Record<string, string[]>,
   dateKey: string
 ): DailySnapshot {
   const dayEvents = events.filter(e => e.dateKey === dateKey)
@@ -55,11 +133,8 @@ export function computeDailySnapshot(
     }
   }
 
-  const pillarEvents = dayEvents.filter(e => e.type === 'pillar_score_saved') as Extract<WellnessEvent, { type: 'pillar_score_saved' }>[]
-  const pillarScores: Record<string, number> = {}
-  for (const e of pillarEvents) {
-    pillarScores[e.pillarId] = e.score
-  }
+  const doneTaskIds = doneTasksByDay[dateKey] ?? []
+  const { scores: pillarScores } = getEffectivePillarScores(events, doneTaskIds, dateKey)
 
   const assessment = assessmentsByDay[dateKey] ?? null
   const hadActivity = meditationMinutes > 0 || breathingSessionCount > 0
@@ -69,13 +144,15 @@ export function computeDailySnapshot(
 
 export function computeAllSnapshots(
   events: WellnessEvent[],
-  assessmentsByDay: Record<string, Assessment>
+  assessmentsByDay: Record<string, Assessment>,
+  doneTasksByDay: Record<string, string[]>,
 ): Record<string, DailySnapshot> {
   const dateKeys = new Set(events.map(e => e.dateKey))
   Object.keys(assessmentsByDay).forEach(k => dateKeys.add(k))
+  Object.keys(doneTasksByDay).forEach(k => dateKeys.add(k))
   const result: Record<string, DailySnapshot> = {}
   for (const key of dateKeys) {
-    result[key] = computeDailySnapshot(events, assessmentsByDay, key)
+    result[key] = computeDailySnapshot(events, assessmentsByDay, doneTasksByDay, key)
   }
   return result
 }
@@ -95,12 +172,13 @@ export function getStreakDays(snapshots: Record<string, DailySnapshot>, today: s
 export function getPeriodStats(
   events: WellnessEvent[],
   assessmentsByDay: Record<string, Assessment>,
+  doneTasksByDay: Record<string, string[]>,
   startDate: string,
   endDate: string,
   label: string
 ): PeriodStats {
   const days = dateRange(startDate, endDate)
-  const dailyBreakdown = days.map(d => computeDailySnapshot(events, assessmentsByDay, d))
+  const dailyBreakdown = days.map(d => computeDailySnapshot(events, assessmentsByDay, doneTasksByDay, d))
 
   const meditationMinutes = dailyBreakdown.reduce((s, d) => s + d.meditationMinutes, 0)
   const breathingSessionCount = dailyBreakdown.reduce((s, d) => s + d.breathingSessionCount, 0)
