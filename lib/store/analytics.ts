@@ -1,6 +1,7 @@
 import type { WellnessEvent } from './types-events'
 import type { DailySnapshot, PeriodStats, ActivityLogEntry, Assessment, PillarId, ActiveProgramState, Program } from '../types'
 import { dayCardBlocks } from '../demo-data'
+import { HABIT_DETECTORS_BY_ID } from './habits'
 
 // ── Pillar scoring (per-day) ──────────────────────────────────────────────────
 
@@ -295,28 +296,74 @@ export function getActivityLog(events: WellnessEvent[], limit = 50): ActivityLog
   })
 }
 
-export function getHabitCheckedDays(events: WellnessEvent[], habitId: string, days = 7): boolean[] {
-  const result: boolean[] = []
+// ── Habits: auto-detected with manual override ───────────────────────────────
+
+export interface HabitDayMark {
+  auto: boolean
+  manual: boolean
+  effective: boolean
+}
+
+function getManualHabitCheck(events: WellnessEvent[], habitId: string, dateKey: string): boolean {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]
+    if (e.dateKey !== dateKey) continue
+    if (e.type === 'habit_checked' && e.habitId === habitId) return e.checked
+  }
+  return false
+}
+
+export function evaluateHabitForDay(
+  habitId: string,
+  events: WellnessEvent[],
+  assessment: Assessment | null,
+  doneTaskIds: string[],
+  dateKey: string,
+): HabitDayMark {
+  const detector = HABIT_DETECTORS_BY_ID[habitId]
+  const dayEvents = events.filter(e => e.dateKey === dateKey)
+  const auto = detector ? detector.detect({ events: dayEvents, assessment, doneTaskIds, dateKey }) : false
+  const manual = getManualHabitCheck(events, habitId, dateKey)
+  return { auto, manual, effective: auto || manual }
+}
+
+export function getHabitDays(
+  events: WellnessEvent[],
+  assessmentsByDay: Record<string, Assessment>,
+  doneTasksByDay: Record<string, string[]>,
+  habitId: string,
+  days = 7,
+): HabitDayMark[] {
+  const result: HabitDayMark[] = []
   for (let i = days - 1; i >= 0; i--) {
     const key = offsetDateKey(-i)
-    const checked = events
-      .filter(e => e.type === 'habit_checked' && e.dateKey === key)
-      .filter(e => (e as Extract<WellnessEvent, { type: 'habit_checked' }>).habitId === habitId)
-    const last = checked[checked.length - 1] as Extract<WellnessEvent, { type: 'habit_checked' }> | undefined
-    result.push(last?.checked === true)
+    result.push(evaluateHabitForDay(
+      habitId, events,
+      assessmentsByDay[key] ?? null,
+      doneTasksByDay[key] ?? [],
+      key,
+    ))
   }
   return result
 }
 
-export function getHabitStreak(events: WellnessEvent[], habitId: string): number {
+export function getHabitStreak(
+  events: WellnessEvent[],
+  assessmentsByDay: Record<string, Assessment>,
+  doneTasksByDay: Record<string, string[]>,
+  habitId: string,
+): number {
   let streak = 0
   let offset = 0
   while (true) {
     const key = offsetDateKey(-offset)
-    const dayEvents = events.filter(e => e.type === 'habit_checked' && e.dateKey === key)
-      .filter(e => (e as Extract<WellnessEvent, { type: 'habit_checked' }>).habitId === habitId)
-    const last = dayEvents[dayEvents.length - 1] as Extract<WellnessEvent, { type: 'habit_checked' }> | undefined
-    if (last?.checked !== true) break
+    const mark = evaluateHabitForDay(
+      habitId, events,
+      assessmentsByDay[key] ?? null,
+      doneTasksByDay[key] ?? [],
+      key,
+    )
+    if (!mark.effective) break
     streak++
     offset++
     if (offset > 365) break
