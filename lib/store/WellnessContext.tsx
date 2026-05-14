@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react'
-import { authenticateWithTelegram } from '../auth/telegram'
+import { retrieveLaunchParams } from '@telegram-apps/sdk-react'
 import type { WellnessEvent, WellnessEventPayload } from './types-events'
 import type { StorePlanItem, ActiveProgramState, Reminder, HabitDef, Assessment } from '../types'
 import {
@@ -256,31 +256,33 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state)
   stateRef.current = state
 
-  // Init: authenticate → load localStorage → merge Supabase
+  // Init: load localStorage immediately, then merge from server
   useEffect(() => {
     let cancelled = false
 
-    async function init() {
-      const { telegramId } = await authenticateWithTelegram()
-      if (cancelled) return
+    let userId: string | null = null
+    try {
+      const lp = retrieveLaunchParams()
+      const uid = lp.tgWebAppData?.user?.id
+      userId = uid != null ? String(uid) : null
+    } catch { /* outside Telegram */ }
 
-      const events = loadEventsFromLS()
-      const persisted = loadStateFromLS()
-      dispatch({ type: 'INIT', events, state: persisted, userId: telegramId })
+    const events = loadEventsFromLS()
+    const persisted = loadStateFromLS()
+    dispatch({ type: 'INIT', events, state: persisted, userId })
 
-      if (telegramId) {
-        const [remoteEvents, remoteState] = await Promise.all([
-          loadEventsFromSupabase(telegramId),
-          loadStateFromSupabase(telegramId),
-        ])
+    if (userId) {
+      Promise.all([
+        loadEventsFromSupabase(userId),
+        loadStateFromSupabase(userId),
+      ]).then(([remoteEvents, remoteState]) => {
         if (cancelled) return
         if (remoteEvents.length > 0 || remoteState) {
           dispatch({ type: 'MERGE_REMOTE', events: remoteEvents, state: remoteState ?? persisted })
         }
-      }
+      })
     }
 
-    init()
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
