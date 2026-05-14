@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useReducer, useEffect, useRef, useCallback, ReactNode } from 'react'
-import { retrieveLaunchParams } from '@telegram-apps/sdk-react'
+import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react'
+import { authenticateWithTelegram } from '../auth/telegram'
 import type { WellnessEvent, WellnessEventPayload } from './types-events'
 import type { StorePlanItem, ActiveProgramState, Reminder, HabitDef, Assessment } from '../types'
 import {
@@ -256,44 +256,61 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state)
   stateRef.current = state
 
-  // Init: load from localStorage immediately, then sync from Supabase
+  // Init: authenticate → load localStorage → merge Supabase
   useEffect(() => {
-    let userId: string | null = null
-    try {
-      const lp = retrieveLaunchParams()
-      const uid = lp.tgWebAppData?.user?.id
-      userId = uid != null ? String(uid) : null
-    } catch { /* outside Telegram */ }
+    let cancelled = false
 
-    const events = loadEventsFromLS()
-    const persisted = loadStateFromLS()
-    dispatch({ type: 'INIT', events, state: persisted, userId })
+    async function init() {
+      const { telegramId } = await authenticateWithTelegram()
+      if (cancelled) return
 
-    if (userId) {
-      Promise.all([
-        loadEventsFromSupabase(userId),
-        loadStateFromSupabase(userId),
-      ]).then(([remoteEvents, remoteState]) => {
+      const events = loadEventsFromLS()
+      const persisted = loadStateFromLS()
+      dispatch({ type: 'INIT', events, state: persisted, userId: telegramId })
+
+      if (telegramId) {
+        const [remoteEvents, remoteState] = await Promise.all([
+          loadEventsFromSupabase(telegramId),
+          loadStateFromSupabase(telegramId),
+        ])
+        if (cancelled) return
         if (remoteEvents.length > 0 || remoteState) {
-          dispatch({
-            type: 'MERGE_REMOTE',
-            events: remoteEvents,
-            state: remoteState ?? persisted,
-          })
+          dispatch({ type: 'MERGE_REMOTE', events: remoteEvents, state: remoteState ?? persisted })
         }
-      })
+      }
     }
+
+    init()
+    return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Persist to localStorage on every state change after init
+  // Persist to localStorage + debounced Supabase state sync
   const prevLoadingRef = useRef(true)
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (state.isLoading) { prevLoadingRef.current = true; return }
     if (prevLoadingRef.current) { prevLoadingRef.current = false; return }
     saveEventsToLS(state.events)
     saveStateToLS(toPersistedState(state))
+    if (stateRef.current.userId) {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+      syncTimerRef.current = setTimeout(() => {
+        syncStateToSupabase(stateRef.current.userId, stateRef.current)
+      }, 2000)
+    }
   }, [state])
+
+  // Sync new events to Supabase as they arrive
+  const prevEventsLenRef = useRef(0)
+  useEffect(() => {
+    if (state.isLoading) return
+    const newEvents = state.events.slice(prevEventsLenRef.current)
+    prevEventsLenRef.current = state.events.length
+    if (newEvents.length > 0) {
+      newEvents.forEach(e => syncEventToSupabase(stateRef.current.userId, e))
+    }
+  }, [state.events, state.isLoading])
 
   return (
     <WellnessStateCtx.Provider value={state}>
