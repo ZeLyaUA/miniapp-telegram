@@ -47,7 +47,7 @@ export function computeDailySnapshot(
 
   for (const e of dayEvents) {
     if (e.type === 'meditation_session_completed') {
-      meditationMinutes += e.actualDurationMinutes
+      meditationMinutes += Math.round(e.actualDurationMinutes)
     }
     if (e.type === 'breathing_session_completed') {
       breathingSessionCount++
