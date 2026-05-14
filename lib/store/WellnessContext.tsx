@@ -116,13 +116,22 @@ type Action =
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
+function normalizeActiveProgram(p: ActiveProgramState | null): ActiveProgramState | null {
+  if (!p) return null
+  return {
+    ...p,
+    scheduledByDateKey: p.scheduledByDateKey ?? {},
+    skippedDays: p.skippedDays ?? [],
+  }
+}
+
 function fromPersistedState(state: PersistedState) {
   return {
     doneTasksByDay: state.doneTasksByDay,
     assessmentsByDay: state.assessmentsByDay,
     donePlanItemsByDay: state.donePlanItemsByDay,
     planItems: state.planItems,
-    activeProgram: state.activeProgram,
+    activeProgram: normalizeActiveProgram(state.activeProgram),
     favoriteMeditationIds: state.favoriteMeditationIds,
     reminders: state.reminders,
     habits: state.habits,
@@ -258,6 +267,7 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
       // Ripple: when manually checking a plan item linked to a practice, also auto-check
       // matching day-card tasks (in the "done" direction only — uncheck does not propagate).
       let doneTasksByDay = state.doneTasksByDay
+      let activeProgram = state.activeProgram
       if (idx < 0) {
         const planItem = state.planItems.find(p => p.id === action.itemId)
         if (planItem?.practiceType && planItem.practiceRefId) {
@@ -268,6 +278,16 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
             doneTasksByDay = { ...doneTasksByDay, [action.dateKey]: [...dayDone, ...newIds] }
           }
         }
+        // Record on which calendar day the program was touched.
+        if (action.source === 'program' && activeProgram) {
+          const sched = activeProgram.scheduledByDateKey ?? {}
+          if (sched[action.dateKey] !== activeProgram.currentDay) {
+            activeProgram = {
+              ...activeProgram,
+              scheduledByDateKey: { ...sched, [action.dateKey]: activeProgram.currentDay },
+            }
+          }
+        }
       }
       const donePlanItemsByDay = { ...state.donePlanItemsByDay, [action.dateKey]: next }
       const updatedSnap = computeDailySnapshot(state.events, state.assessmentsByDay, doneTasksByDay, action.dateKey)
@@ -275,28 +295,44 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
         ...state,
         doneTasksByDay,
         donePlanItemsByDay,
+        activeProgram,
         dailySnapshots: { ...state.dailySnapshots, [action.dateKey]: updatedSnap },
       }
     }
 
-    case 'START_PROGRAM':
+    case 'START_PROGRAM': {
+      const today = state.todayKey
+      const normalized: ActiveProgramState = {
+        ...action.activeProgram,
+        scheduledByDateKey: { [today]: action.activeProgram.currentDay },
+        skippedDays: [],
+      }
       return {
         ...state,
-        activeProgram: action.activeProgram,
+        activeProgram: normalized,
         planItems: [...state.planItems.filter(p => p.source !== 'program'), ...action.planItems],
       }
+    }
 
-    case 'ADVANCE_PROGRAM_DAY':
+    case 'ADVANCE_PROGRAM_DAY': {
       if (!state.activeProgram) return state
+      const today = state.todayKey
+      const newCurrentDay = action.dayNumber + 1
+      const sched = state.activeProgram.scheduledByDateKey ?? {}
+      // Mark today as scheduled for the upcoming day.
+      const scheduledByDateKey = { ...sched, [today]: newCurrentDay }
       return {
         ...state,
         activeProgram: {
           ...state.activeProgram,
-          currentDay: action.dayNumber + 1,
+          currentDay: newCurrentDay,
           completedDays: [...state.activeProgram.completedDays, action.dayNumber],
+          scheduledByDateKey,
+          skippedDays: state.activeProgram.skippedDays ?? [],
         },
         planItems: [...state.planItems.filter(p => p.source !== 'program'), ...action.newPlanItems],
       }
+    }
 
     case 'TOGGLE_FAVORITE': {
       const has = state.favoriteMeditationIds.includes(action.sessionId)

@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { useSwipeTabs } from '@/lib/useSwipeTabs'
-import { ChevronLeft, ChevronRight, BookOpen, User, Bell, CheckCircle2, Circle, Clock, Plus, X, Pencil, Trash2, Wind, Brain } from 'lucide-react'
+import { ChevronLeft, ChevronRight, BookOpen, User, Bell, CheckCircle2, Circle, Clock, Plus, X, Pencil, Trash2, Wind, Brain, ArrowDownLeft } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { ProgramDetailView } from './ProgramDetailView'
 import { programs } from '@/lib/demo-data'
 import { cn } from '@/lib/utils'
 import { useWellness, createEvent, syncEventToSupabase, syncStateToSupabase } from '@/lib/store/WellnessContext'
 import { getPlanItemsForProgramDay } from '@/lib/store/programUtils'
+import { getProgramTimeline, getProgramAdherence, getLastProgramActivityDate, daysBetween } from '@/lib/store/analytics'
 import type { Program, Reminder, SectionId, StorePlanItem, ActiveProgramState } from '@/lib/types'
 
 const tabs: { id: string; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
@@ -207,7 +208,14 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
   // Show active program progress
   const activeProgDetails = activeProgram ? programs.find(p => p.id === activeProgram.programId) : null
   const totalProgramDays = activeProgDetails?.days?.length ?? 0
-  const progProgress = totalProgramDays > 0 ? activeProgram!.completedDays.length / totalProgramDays : 0
+  const timeline = activeProgram && totalProgramDays > 0 ? getProgramTimeline(activeProgram, totalProgramDays) : []
+  const adherenceStats = activeProgram && totalProgramDays > 0
+    ? getProgramAdherence(activeProgram, totalProgramDays, todayKey)
+    : null
+  // Gap detection: user returns to plan after at least one calendar day with no program activity.
+  const lastActive = activeProgram ? getLastProgramActivityDate(activeProgram) : null
+  const gapSinceLast = lastActive ? daysBetween(lastActive, todayKey) : 0
+  const showReturnChip = activeProgram != null && lastActive != null && lastActive !== todayKey && gapSinceLast >= 1
 
   return (
     <div className="flex flex-col h-full">
@@ -267,7 +275,7 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
             {activeTab === 'programs' && (
               <div className="flex flex-col gap-3 mt-2 max-w-lg">
                 {/* Active program progress card */}
-                {activeProgram && activeProgDetails && (
+                {activeProgram && activeProgDetails && adherenceStats && (
                   <GlassCard accent="amber" className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold" style={{ color: 'var(--amber)' }}>Активная программа</p>
@@ -276,15 +284,56 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                       </span>
                     </div>
                     <p className="text-white font-medium text-sm mb-3">{activeProgDetails.title}</p>
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,220,170,0.1)' }}>
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${progProgress * 100}%`, background: 'var(--amber)' }}
-                      />
+
+                    {/* Timeline dots */}
+                    <div className="flex items-center gap-1 mb-3">
+                      {timeline.map(({ programDay, status }) => {
+                        const isCurrent = status === 'current'
+                        const bg =
+                          status === 'completed' ? 'var(--amber)' :
+                          status === 'current' ? 'rgba(201,150,90,0.18)' :
+                          status === 'skipped' ? 'rgba(255,248,235,0.10)' :
+                          'rgba(255,248,235,0.04)'
+                        const border =
+                          status === 'skipped' ? '1px dashed rgba(255,220,170,0.25)' :
+                          status === 'current' ? '1px solid rgba(201,150,90,0.55)' :
+                          status === 'future' ? '1px solid rgba(255,220,170,0.07)' :
+                          'none'
+                        return (
+                          <div
+                            key={programDay}
+                            className="flex-1 rounded-full"
+                            style={{
+                              height: isCurrent ? 10 : 6,
+                              background: bg,
+                              border,
+                              boxShadow: isCurrent ? 'var(--glow-amber)' : 'none',
+                              transition: 'all 300ms',
+                            }}
+                            title={`День ${programDay} — ${status}`}
+                          />
+                        )
+                      })}
                     </div>
-                    <p className="text-xs mt-2" style={{ color: 'rgba(255,220,170,0.4)' }}>
-                      {activeProgram.completedDays.length} дней завершено
-                    </p>
+
+                    {/* Two-number metrics */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(255,248,235,0.04)', border: '1px solid rgba(255,220,170,0.06)' }}>
+                        <p className="text-xs" style={{ color: 'rgba(255,220,170,0.45)' }}>Прошли</p>
+                        <p className="text-white font-semibold text-sm">
+                          {activeProgram.completedDays.length} <span style={{ color: 'rgba(255,220,170,0.4)', fontSize: 11 }}>/ {totalProgramDays}</span>
+                        </p>
+                      </div>
+                      <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(255,248,235,0.04)', border: '1px solid rgba(255,220,170,0.06)' }}>
+                        <p className="text-xs" style={{ color: 'rgba(255,220,170,0.45)' }}>Активность</p>
+                        <p className="text-white font-semibold text-sm">
+                          {Math.round(adherenceStats.adherence * 100)}%
+                          {adherenceStats.gapDays > 0 && (
+                            <span style={{ color: 'rgba(255,220,170,0.4)', fontSize: 11 }}> · {adherenceStats.gapDays} пропуск{adherenceStats.gapDays === 1 ? '' : 'а'}</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
                   </GlassCard>
                 )}
 
@@ -335,6 +384,19 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
             {/* ── Мой план ── */}
             {activeTab === 'myplan' && (
               <div className="flex flex-col gap-3 mt-2 max-w-lg">
+
+                {/* Return-after-gap chip */}
+                {showReturnChip && activeProgDetails && activeProgram && !allProgramItemsDone && (
+                  <div
+                    className="flex items-center gap-2 px-3 py-2 rounded-2xl"
+                    style={{ background: 'rgba(139,117,207,0.10)', border: '1px solid rgba(139,117,207,0.20)' }}
+                  >
+                    <ArrowDownLeft size={14} style={{ color: 'var(--violet)', flexShrink: 0 }} />
+                    <p className="text-xs flex-1" style={{ color: 'rgba(255,248,235,0.7)' }}>
+                      {gapSinceLast === 1 ? 'Не были вчера' : `Не были ${gapSinceLast} дн`}. Сегодня — день {activeProgram.currentDay} «{activeProgDetails.title}»
+                    </p>
+                  </div>
+                )}
 
                 {/* Program completion card */}
                 {allProgramItemsDone && activeProgram && (

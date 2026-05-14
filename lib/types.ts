@@ -154,9 +154,11 @@ export interface StorePlanItem {
 
 export interface ActiveProgramState {
   programId: string
-  startedAt: number       // timestamp
-  currentDay: number      // 1-based
+  startedAt: number                                // timestamp
+  currentDay: number                               // 1-based
   completedDays: number[]
+  scheduledByDateKey?: Record<string, number>      // calendar day → programDay user worked on
+  skippedDays?: number[]                           // programDays explicitly skipped
 }
 
 export interface Assessment {

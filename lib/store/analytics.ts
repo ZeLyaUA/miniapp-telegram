@@ -1,5 +1,5 @@
 import type { WellnessEvent } from './types-events'
-import type { DailySnapshot, PeriodStats, ActivityLogEntry, Assessment, PillarId } from '../types'
+import type { DailySnapshot, PeriodStats, ActivityLogEntry, Assessment, PillarId, ActiveProgramState, Program } from '../types'
 import { dayCardBlocks } from '../demo-data'
 
 // ── Pillar scoring (per-day) ──────────────────────────────────────────────────
@@ -346,4 +346,101 @@ export function getMoodCorrelation(
     withoutPractice: wo != null ? Math.round(wo * 10) / 10 : null,
     diff: w != null && wo != null ? Math.round((w - wo) * 10) / 10 : null,
   }
+}
+
+// ── Program timeline & adherence ──────────────────────────────────────────────
+
+export type ProgramDayStatus = 'completed' | 'current' | 'skipped' | 'future'
+
+export interface ProgramTimelineEntry {
+  programDay: number
+  status: ProgramDayStatus
+  dateKey?: string         // calendar day this program day landed on
+}
+
+/**
+ * Walks the program from day 1 to totalDays, classifying each.
+ * Completed = in completedDays. Current = activeProgram.currentDay. Skipped = in skippedDays.
+ * Future = everything else.
+ */
+export function getProgramTimeline(
+  activeProgram: ActiveProgramState,
+  totalDays: number,
+): ProgramTimelineEntry[] {
+  const completed = new Set(activeProgram.completedDays)
+  const skipped = new Set(activeProgram.skippedDays ?? [])
+  const sched = activeProgram.scheduledByDateKey ?? {}
+  // Invert: programDay → earliest dateKey it was scheduled to.
+  const dayToDateKey = new Map<number, string>()
+  for (const [dk, pd] of Object.entries(sched)) {
+    const prev = dayToDateKey.get(pd)
+    if (!prev || dk < prev) dayToDateKey.set(pd, dk)
+  }
+
+  const entries: ProgramTimelineEntry[] = []
+  for (let pd = 1; pd <= totalDays; pd++) {
+    let status: ProgramDayStatus
+    if (completed.has(pd)) status = 'completed'
+    else if (skipped.has(pd)) status = 'skipped'
+    else if (pd === activeProgram.currentDay) status = 'current'
+    else status = 'future'
+    entries.push({ programDay: pd, status, dateKey: dayToDateKey.get(pd) })
+  }
+  return entries
+}
+
+/**
+ * Two metrics for an active program:
+ *  - completion: completedDays / totalDays  (how far through the course)
+ *  - adherence: completedDays / (completedDays + skippedDays + missed-calendar-gaps)
+ *               i.e. of all the days "in the rear-view", how many did you do?
+ *  - gapDays: count of calendar days since start with no program activity.
+ */
+export function getProgramAdherence(
+  activeProgram: ActiveProgramState,
+  totalDays: number,
+  todayKey: string,
+): { completion: number; adherence: number; gapDays: number; elapsedCalendarDays: number } {
+  const completed = activeProgram.completedDays.length
+  const skipped = (activeProgram.skippedDays ?? []).length
+
+  const startDate = new Date(activeProgram.startedAt)
+  const startKey = toDateKey(startDate)
+  const elapsedCalendarDays = Math.max(1, Math.ceil(
+    (new Date(todayKey + 'T00:00:00').getTime() - new Date(startKey + 'T00:00:00').getTime()) / 86400000
+  ) + 1)
+
+  const sched = activeProgram.scheduledByDateKey ?? {}
+  const activeCalendarDays = Object.keys(sched).length
+  const gapDays = Math.max(0, elapsedCalendarDays - activeCalendarDays)
+
+  const denom = completed + skipped + gapDays
+  const adherence = denom > 0 ? completed / denom : 1
+
+  return {
+    completion: totalDays > 0 ? completed / totalDays : 0,
+    adherence: Math.max(0, Math.min(1, adherence)),
+    gapDays,
+    elapsedCalendarDays,
+  }
+}
+
+/** Find the most recent calendar day with program activity (max key in scheduledByDateKey). */
+export function getLastProgramActivityDate(activeProgram: ActiveProgramState): string | null {
+  const sched = activeProgram.scheduledByDateKey ?? {}
+  const keys = Object.keys(sched)
+  if (keys.length === 0) return null
+  return keys.reduce((a, b) => (a > b ? a : b))
+}
+
+/** Whole-number days between two dateKeys (positive if b is after a). */
+export function daysBetween(a: string, b: string): number {
+  const aMs = new Date(a + 'T00:00:00').getTime()
+  const bMs = new Date(b + 'T00:00:00').getTime()
+  return Math.round((bMs - aMs) / 86400000)
+}
+
+/** True if `program` is associated with `activeProgram`. */
+export function isActiveProgram(activeProgram: ActiveProgramState | null, program: Program): boolean {
+  return activeProgram?.programId === program.id
 }
