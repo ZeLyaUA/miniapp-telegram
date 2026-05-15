@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ChevronLeft, Play, Pause, RotateCcw, Wind, ArrowUp, ArrowDown, RefreshCw, ArrowLeftRight, Film, X, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, Play, Pause, RotateCcw, Wind, ArrowUp, ArrowDown, RefreshCw, ArrowLeftRight, Film, X, CheckCircle2, Heart } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { ViewShell } from '@/components/layout/ViewShell'
 import { BreathingCircle } from './BreathingCircle'
@@ -30,9 +30,13 @@ interface BreathingViewProps {
     completedFull: boolean,
     pausedSeconds: number,
   ) => void
+  favoriteIds?: string[]
+  onToggleFavorite?: (practiceId: string) => void
 }
 
-export function BreathingView({ onBack, initialPracticeId, onSessionStart, onSessionComplete }: BreathingViewProps) {
+export function BreathingView({ onBack, initialPracticeId, onSessionStart, onSessionComplete, favoriteIds, onToggleFavorite }: BreathingViewProps) {
+  const effectiveFavorites = favoriteIds ?? []
+  const isFav = (id: string) => effectiveFavorites.includes(id)
   const { state: wellness, dispatch } = useWellness()
   const [selectedPractice, setSelectedPractice] = useState<BreathingPractice | null>(
     initialPracticeId ? (breathingPractices.find(p => p.id === initialPracticeId) ?? null) : null
@@ -172,10 +176,24 @@ export function BreathingView({ onBack, initialPracticeId, onSessionStart, onSes
             >
               <ChevronLeft size={18} style={{ color: 'rgba(255,248,235,0.7)' }} />
             </button>
-            <div>
-              <h1 className="text-white font-bold text-base">{selectedPractice.name}</h1>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-white font-bold text-base truncate">{selectedPractice.name}</h1>
               <p className="label-upper" style={{ marginTop: 2 }}>{selectedPractice.subtitle}</p>
             </div>
+            {onToggleFavorite && (
+              <button
+                onClick={() => onToggleFavorite(selectedPractice.id)}
+                className="w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90 flex-shrink-0"
+                style={{ background: 'rgba(255,248,235,0.06)', border: '1px solid rgba(255,220,170,0.08)' }}
+                aria-label={isFav(selectedPractice.id) ? 'Убрать из избранного' : 'Добавить в избранное'}
+              >
+                <Heart
+                  size={16}
+                  fill={isFav(selectedPractice.id) ? 'currentColor' : 'none'}
+                  style={{ color: isFav(selectedPractice.id) ? 'var(--rose)' : 'rgba(255,220,170,0.6)' }}
+                />
+              </button>
+            )}
           </div>
         }
       >
@@ -325,10 +343,13 @@ export function BreathingView({ onBack, initialPracticeId, onSessionStart, onSes
           {breathingPractices.map(practice => {
             const Icon = iconMap[practice.icon] ?? Wind
             return (
-              <button
+              <div
                 key={practice.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedPractice(practice)}
-                className="text-left w-full transition-all duration-400 active:scale-[0.98]"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPractice(practice) } }}
+                className="text-left w-full transition-all duration-400 active:scale-[0.98] cursor-pointer"
               >
                 <GlassCard accent="amber" className="p-4 flex items-center gap-4 h-full">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(201,150,90,0.12)' }}>
@@ -343,12 +364,28 @@ export function BreathingView({ onBack, initialPracticeId, onSessionStart, onSes
                       {practice.exhale > 0 && <TimingBadge label="Выдох" seconds={practice.exhale} />}
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-semibold text-sm" style={{ color: 'var(--amber)' }}>{practice.rounds}</p>
-                    <p className="text-xs" style={{ color: 'rgba(255,220,170,0.3)' }}>кругов</p>
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    {onToggleFavorite && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onToggleFavorite(practice.id) }}
+                        className="w-7 h-7 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
+                        style={{ background: 'rgba(0,0,0,0.18)' }}
+                        aria-label={isFav(practice.id) ? 'Убрать из избранного' : 'Добавить в избранное'}
+                      >
+                        <Heart
+                          size={13}
+                          fill={isFav(practice.id) ? 'currentColor' : 'none'}
+                          style={{ color: isFav(practice.id) ? 'var(--rose)' : 'rgba(255,220,170,0.6)' }}
+                        />
+                      </button>
+                    )}
+                    <div className="text-right">
+                      <p className="font-semibold text-sm" style={{ color: 'var(--amber)' }}>{practice.rounds}</p>
+                      <p className="text-xs" style={{ color: 'rgba(255,220,170,0.3)' }}>кругов</p>
+                    </div>
                   </div>
                 </GlassCard>
-              </button>
+              </div>
             )
           })}
         </div>

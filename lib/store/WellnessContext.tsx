@@ -87,6 +87,7 @@ export interface WellnessStore {
   planItems: StorePlanItem[]
   activeProgram: ActiveProgramState | null
   favoriteMeditationIds: string[]
+  favoriteBreathingIds: string[]
   reminders: Reminder[]
   habits: HabitDef[]
   // Transient — surfaced to UI right after a session completes
@@ -107,7 +108,7 @@ type Action =
   | { type: 'TOGGLE_PLAN_ITEM_DONE'; dateKey: string; itemId: string; source: 'manual' | 'program'; programId?: string }
   | { type: 'START_PROGRAM'; activeProgram: ActiveProgramState; planItems: StorePlanItem[] }
   | { type: 'ADVANCE_PROGRAM_DAY'; dayNumber: number; newPlanItems: StorePlanItem[] }
-  | { type: 'TOGGLE_FAVORITE'; sessionId: string }
+  | { type: 'TOGGLE_FAVORITE'; kind: 'meditation' | 'breathing'; id: string }
   | { type: 'ADD_REMINDER'; reminder: Reminder }
   | { type: 'UPDATE_REMINDER'; reminder: Reminder }
   | { type: 'DELETE_REMINDER'; id: string }
@@ -133,6 +134,7 @@ function fromPersistedState(state: PersistedState) {
     planItems: state.planItems,
     activeProgram: normalizeActiveProgram(state.activeProgram),
     favoriteMeditationIds: state.favoriteMeditationIds,
+    favoriteBreathingIds: state.favoriteBreathingIds,
     reminders: state.reminders,
     habits: state.habits,
   }
@@ -335,12 +337,21 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
     }
 
     case 'TOGGLE_FAVORITE': {
-      const has = state.favoriteMeditationIds.includes(action.sessionId)
+      if (action.kind === 'meditation') {
+        const has = state.favoriteMeditationIds.includes(action.id)
+        return {
+          ...state,
+          favoriteMeditationIds: has
+            ? state.favoriteMeditationIds.filter(id => id !== action.id)
+            : [...state.favoriteMeditationIds, action.id],
+        }
+      }
+      const has = state.favoriteBreathingIds.includes(action.id)
       return {
         ...state,
-        favoriteMeditationIds: has
-          ? state.favoriteMeditationIds.filter(id => id !== action.sessionId)
-          : [...state.favoriteMeditationIds, action.sessionId],
+        favoriteBreathingIds: has
+          ? state.favoriteBreathingIds.filter(id => id !== action.id)
+          : [...state.favoriteBreathingIds, action.id],
       }
     }
 
@@ -392,6 +403,7 @@ function toPersistedState(s: WellnessStore): PersistedState {
     donePlanItemsByDay: s.donePlanItemsByDay,
     activeProgram: s.activeProgram,
     favoriteMeditationIds: s.favoriteMeditationIds,
+    favoriteBreathingIds: s.favoriteBreathingIds,
     reminders: s.reminders,
     habits: s.habits,
   }
@@ -412,6 +424,7 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
     planItems: [],
     activeProgram: null,
     favoriteMeditationIds: [],
+    favoriteBreathingIds: [],
     reminders: [],
     habits: [],
     lastAutoChecks: null,

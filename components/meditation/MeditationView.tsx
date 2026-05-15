@@ -33,9 +33,10 @@ interface MeditationViewProps {
   ) => void
   streak?: number
   favoriteIds?: string[]
+  onToggleFavorite?: (sessionId: string) => void
 }
 
-export function MeditationView({ onBack, initialSessionId, onSessionStart, onSessionComplete, streak = 0, favoriteIds }: MeditationViewProps) {
+export function MeditationView({ onBack, initialSessionId, onSessionStart, onSessionComplete, streak = 0, favoriteIds, onToggleFavorite }: MeditationViewProps) {
   const [selectedCategory, setSelectedCategory] = useState('quick')
   const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(
     initialSessionId ? (meditationSessions.find(s => s.id === initialSessionId) ?? null) : null
@@ -44,10 +45,11 @@ export function MeditationView({ onBack, initialSessionId, onSessionStart, onSes
   const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
     useSwipeTabs(meditationCategories, selectedCategory, setSelectedCategory)
 
-  const effectiveFavorites = favoriteIds ?? meditationSessions.filter(s => s.isFavorite).map(s => s.id)
+  const effectiveFavorites = favoriteIds ?? []
   const filtered = selectedCategory === 'favorites'
     ? meditationSessions.filter(s => effectiveFavorites.includes(s.id))
     : meditationSessions.filter(s => s.category === selectedCategory)
+  const isFav = (id: string) => effectiveFavorites.includes(id)
 
   if (activeSession) {
     return (
@@ -95,7 +97,20 @@ export function MeditationView({ onBack, initialSessionId, onSessionStart, onSes
               <span className="flex items-center gap-1"><Clock size={11} /> {selectedSession.duration} мин</span>
               <span>·</span>
               <span>{levelLabel[selectedSession.level]}</span>
-              {selectedSession.isFavorite && <Heart size={11} fill="currentColor" style={{ color: 'var(--rose)', marginLeft: 'auto' }} />}
+              {onToggleFavorite && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleFavorite(selectedSession.id) }}
+                  className="ml-auto w-7 h-7 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
+                  style={{ background: 'rgba(255,255,255,0.08)' }}
+                  aria-label={isFav(selectedSession.id) ? 'Убрать из избранного' : 'Добавить в избранное'}
+                >
+                  <Heart
+                    size={13}
+                    fill={isFav(selectedSession.id) ? 'currentColor' : 'none'}
+                    style={{ color: isFav(selectedSession.id) ? 'var(--rose)' : 'rgba(255,220,170,0.5)' }}
+                  />
+                </button>
+              )}
             </div>
           </div>
 
@@ -207,10 +222,13 @@ export function MeditationView({ onBack, initialSessionId, onSessionStart, onSes
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filtered.map(session => (
-              <button
+              <div
                 key={session.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedSession(session)}
-                className="text-left w-full transition-all duration-400 active:scale-[0.98]"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedSession(session) } }}
+                className="text-left w-full transition-all duration-400 active:scale-[0.98] cursor-pointer"
               >
                 <div
                   className="relative overflow-hidden rounded-2xl p-4 flex items-center gap-4"
@@ -225,11 +243,8 @@ export function MeditationView({ onBack, initialSessionId, onSessionStart, onSes
                     <Play size={18} style={{ color: 'rgba(255,240,210,0.9)', marginLeft: 2 }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-white font-semibold text-sm truncate">{session.title}</p>
-                      {session.isFavorite && <Heart size={11} fill="currentColor" style={{ color: 'var(--rose)', flexShrink: 0 }} />}
-                    </div>
-                    <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>{session.description}</p>
+                    <p className="text-white font-semibold text-sm truncate pr-7">{session.title}</p>
+                    <p className="text-xs mt-0.5 truncate pr-7" style={{ color: 'rgba(255,255,255,0.45)' }}>{session.description}</p>
                     <div className="flex items-center gap-2 mt-1.5 text-xs" style={{ color: 'rgba(255,220,170,0.4)' }}>
                       <Clock size={10} />
                       <span>{session.duration} мин</span>
@@ -237,8 +252,22 @@ export function MeditationView({ onBack, initialSessionId, onSessionStart, onSes
                       <span>{levelLabel[session.level]}</span>
                     </div>
                   </div>
+                  {onToggleFavorite && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onToggleFavorite(session.id) }}
+                      className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90"
+                      style={{ background: 'rgba(0,0,0,0.18)' }}
+                      aria-label={isFav(session.id) ? 'Убрать из избранного' : 'Добавить в избранное'}
+                    >
+                      <Heart
+                        size={13}
+                        fill={isFav(session.id) ? 'currentColor' : 'none'}
+                        style={{ color: isFav(session.id) ? 'var(--rose)' : 'rgba(255,220,170,0.6)' }}
+                      />
+                    </button>
+                  )}
                 </div>
-              </button>
+              </div>
             ))}
           </div>
           </div>

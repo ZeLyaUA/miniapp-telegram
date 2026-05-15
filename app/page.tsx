@@ -99,6 +99,7 @@ export default function Page() {
           initialSessionId={initialItemId ?? undefined}
           streak={streak}
           favoriteIds={state.favoriteMeditationIds}
+          onToggleFavorite={(sessionId) => dispatch({ type: 'TOGGLE_FAVORITE', kind: 'meditation', id: sessionId })}
           onSessionStart={(sessionId, sessionTitle, plannedMinutes) => {
             logEvent({ type: 'session_started', sessionType: 'meditation', refId: sessionId, refName: sessionTitle, plannedMinutes })
           }}
@@ -111,6 +112,8 @@ export default function Page() {
         <BreathingView
           onBack={() => { setInitialItemId(null); setActiveSection(null) }}
           initialPracticeId={initialItemId ?? undefined}
+          favoriteIds={state.favoriteBreathingIds}
+          onToggleFavorite={(practiceId) => dispatch({ type: 'TOGGLE_FAVORITE', kind: 'breathing', id: practiceId })}
           onSessionStart={(practiceId, practiceName, plannedRounds) => {
             logEvent({ type: 'session_started', sessionType: 'breathing', refId: practiceId, refName: practiceName, plannedRounds })
           }}
@@ -137,7 +140,16 @@ export default function Page() {
         />
       )
     }
-    if (activeTab === 'favorites') return <FavoritesView />
+    if (activeTab === 'favorites') return (
+      <FavoritesView
+        favoriteMeditationIds={state.favoriteMeditationIds}
+        favoriteBreathingIds={state.favoriteBreathingIds}
+        onOpenMeditation={(id) => { setInitialItemId(id); setActiveTab('home'); setActiveSection('meditation') }}
+        onOpenBreathing={(id) => { setInitialItemId(id); setActiveTab('home'); setActiveSection('breathing') }}
+        onToggleMeditationFavorite={(id) => dispatch({ type: 'TOGGLE_FAVORITE', kind: 'meditation', id })}
+        onToggleBreathingFavorite={(id) => dispatch({ type: 'TOGGLE_FAVORITE', kind: 'breathing', id })}
+      />
+    )
     if (activeTab === 'notifications') return <NotificationsView />
     if (activeTab === 'profile') return <ProfileView onShowTour={handleShowTour} firstName={firstName} photoUrl={photoUrl} />
     return null

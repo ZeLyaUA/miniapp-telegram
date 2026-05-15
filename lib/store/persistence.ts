@@ -11,6 +11,7 @@ export interface PersistedState {
   donePlanItemsByDay: Record<string, string[]>
   activeProgram: ActiveProgramState | null
   favoriteMeditationIds: string[]
+  favoriteBreathingIds: string[]
   reminders: Reminder[]
   habits: HabitDef[]
 }
@@ -22,6 +23,7 @@ const emptyState: PersistedState = {
   donePlanItemsByDay: {},
   activeProgram: null,
   favoriteMeditationIds: [],
+  favoriteBreathingIds: [],
   reminders: [
     { id: 'r1', title: 'Утренняя медитация', time: '08:00', days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'], isEnabled: true },
     { id: 'r2', title: 'Вечернее дыхание', time: '21:00', days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], isEnabled: true },
