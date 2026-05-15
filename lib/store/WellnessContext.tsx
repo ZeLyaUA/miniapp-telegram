@@ -419,7 +419,7 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
 
   const [state, dispatch] = useReducer(reducer, initial)
   const stateRef = useRef(state)
-  stateRef.current = state
+  useEffect(() => { stateRef.current = state }, [state])
 
   // Init: load localStorage immediately, then merge from server
   useEffect(() => {
@@ -453,7 +453,6 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
     }
 
     return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Persist to localStorage + debounced Supabase state sync

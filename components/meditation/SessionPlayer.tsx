@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { X, Pause, Play, CheckCircle2 } from 'lucide-react'
 import type { MeditationSession } from '@/lib/types'
 import { useWellness } from '@/lib/store/WellnessContext'
@@ -59,7 +59,7 @@ export function SessionPlayer({ session, onClose, onStart, onComplete, streak = 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const finalize = (completedFull: boolean) => {
+  const finalize = useCallback((completedFull: boolean) => {
     if (completedRef.current) return
     completedRef.current = true
     if (pauseStartAtRef.current > 0) {
@@ -70,7 +70,7 @@ export function SessionPlayer({ session, onClose, onStart, onComplete, streak = 
     const actualMinutes = Math.max(0, (totalMs - pausedMsRef.current) / 60000)
     const pausedSeconds = Math.round(pausedMsRef.current / 1000)
     onComplete?.(session.id, session.title, session.duration, completedFull, actualMinutes, pausedSeconds)
-  }
+  }, [onComplete, session.id, session.title, session.duration])
 
   // Safety net: log abandoned session if user navigates away (e.g., system back).
   useEffect(() => {
@@ -112,7 +112,7 @@ export function SessionPlayer({ session, onClose, onStart, onComplete, streak = 
     }, 30000)
 
     return clear
-  }, [state])
+  }, [state, finalize])
 
   const progress = (totalSeconds - secondsLeft) / totalSeconds
   const radius = 90

@@ -1,9 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { Wind, Brain, CalendarCheck, BarChart3, Sparkles, X, ChevronRight, Sun } from 'lucide-react'
 
 const STORAGE_KEY = 'onboarding_v1_done'
+
+const onboardingListeners = new Set<() => void>()
+const subscribeOnboarding = (l: () => void) => {
+  onboardingListeners.add(l)
+  return () => { onboardingListeners.delete(l) }
+}
+const notifyOnboarding = () => onboardingListeners.forEach(l => l())
+const getOnboardingDone = () => {
+  try { return localStorage.getItem(STORAGE_KEY) === '1' } catch { return false }
+}
+const getOnboardingDoneServer = () => true  // на сервере не показываем тур
 
 const steps = [
   {
@@ -210,23 +221,18 @@ export function OnboardingTour({ onDone }: { onDone: () => void }) {
 }
 
 export function useOnboarding() {
-  const [show, setShow] = useState(false)
-
-  useEffect(() => {
-    if (!localStorage.getItem(STORAGE_KEY)) setShow(true)
-  }, [])
-
-  function done() {
-    localStorage.setItem(STORAGE_KEY, '1')
-    setShow(false)
+  const isDone = useSyncExternalStore(subscribeOnboarding, getOnboardingDone, getOnboardingDoneServer)
+  return {
+    show: !isDone,
+    done: () => {
+      try { localStorage.setItem(STORAGE_KEY, '1') } catch {}
+      notifyOnboarding()
+    },
+    reset: () => {
+      try { localStorage.removeItem(STORAGE_KEY) } catch {}
+      notifyOnboarding()
+    },
   }
-
-  function reset() {
-    localStorage.removeItem(STORAGE_KEY)
-    setShow(true)
-  }
-
-  return { show, done, reset }
 }
 
 /* ─── Step visuals ──────────────────────────────────────────────── */

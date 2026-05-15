@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useSwipeTabs } from '@/lib/useSwipeTabs'
 import { ChevronLeft, ChevronRight, BookOpen, User, Bell, CheckCircle2, Circle, Clock, Plus, X, Pencil, Trash2, Wind, Brain, ArrowDownLeft } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
@@ -63,7 +63,7 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
 
   // ── Programs ──────────────────────────────────────────────────────────────
 
-  const handleStartProgram = (program: Program) => {
+  const handleStartProgram = useCallback((program: Program) => {
     const newActiveProgram: ActiveProgramState = {
       programId: program.id,
       startedAt: Date.now(),
@@ -82,7 +82,7 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
     syncEventToSupabase(state.userId, event)
     syncStateToSupabase(state.userId, state)
     setActiveTab('myplan')
-  }
+  }, [dispatch, state])
 
   const handleAdvanceProgram = () => {
     if (!activeProgram) return
@@ -162,7 +162,11 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
   // ── Reminders ─────────────────────────────────────────────────────────────
 
   const toggleDay = (day: string) =>
-    setNewDays(prev => { const s = new Set(prev); s.has(day) ? s.delete(day) : s.add(day); return s })
+    setNewDays(prev => {
+      const s = new Set(prev)
+      if (s.has(day)) s.delete(day); else s.add(day)
+      return s
+    })
 
   const saveReminder = () => {
     if (!newTitle.trim() || newDays.size === 0) return

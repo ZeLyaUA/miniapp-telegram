@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Droplet, RotateCcw } from 'lucide-react'
 import { GlassCard } from '@/components/layout/GlassCard'
 import { dayCardBlocks, weekTheme } from '@/lib/demo-data'
@@ -10,6 +10,11 @@ import type { DayBlock, PillarId, Assessment } from '@/lib/types'
 
 interface DayCardViewProps {
   onBack: () => void
+}
+
+const emptyAssessment: Assessment = {
+  consciousness: null, mood: null, sleepQuality: null,
+  energy: null, water: null, journal: null,
 }
 
 function getDayInfo(offset: number) {
@@ -445,12 +450,14 @@ export function DayCardView({ onBack }: DayCardViewProps) {
   }
 
   const currentDateKey = getDateKey(dayOffset)
-  const doneIds = new Set(state.doneTasksByDay[currentDateKey] ?? [])
-  const emptyAssessment: Assessment = {
-    consciousness: null, mood: null, sleepQuality: null,
-    energy: null, water: null, journal: null,
-  }
-  const assessment: Assessment = { ...emptyAssessment, ...(state.assessmentsByDay[currentDateKey] ?? {}) }
+  const doneIds = useMemo(
+    () => new Set(state.doneTasksByDay[currentDateKey] ?? []),
+    [state.doneTasksByDay, currentDateKey]
+  )
+  const assessment = useMemo<Assessment>(
+    () => ({ ...emptyAssessment, ...(state.assessmentsByDay[currentDateKey] ?? {}) }),
+    [state.assessmentsByDay, currentDateKey]
+  )
 
   // Per-day effective pillar scores (auto from done tasks, override from events).
   const doneTaskIdsForDay = Array.from(doneIds)

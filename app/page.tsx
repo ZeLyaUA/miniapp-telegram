@@ -1,7 +1,14 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useSyncExternalStore } from 'react'
 import { retrieveLaunchParams } from '@telegram-apps/sdk-react'
+
+const noopSubscribe = () => () => {}
+
+function getTgUser() {
+  try { return retrieveLaunchParams().tgWebAppData?.user ?? null }
+  catch { return null }
+}
 import { BottomNav } from '@/components/layout/BottomNav'
 import { SidebarNav } from '@/components/layout/SidebarNav'
 import { HomeView } from '@/components/home/HomeView'
@@ -22,18 +29,11 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
   const [activeSection, setActiveSection] = useState<SectionId | null>(null)
   const [initialItemId, setInitialItemId] = useState<string | null>(null)
-  const [firstName, setFirstName] = useState<string | null>(null)
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const tgUser = useSyncExternalStore(noopSubscribe, getTgUser, () => null)
+  const firstName = tgUser?.first_name ?? null
+  const photoUrl = tgUser?.photo_url ?? null
   const { state, dispatch } = useWellness()
   const { show: showTour, done: tourDone, reset: tourReset } = useOnboarding()
-
-  useEffect(() => {
-    try {
-      const lp = retrieveLaunchParams()
-      setFirstName(lp.tgWebAppData?.user?.first_name ?? null)
-      setPhotoUrl(lp.tgWebAppData?.user?.photo_url ?? null)
-    } catch { /* вне Telegram */ }
-  }, [])
 
   const logEvent = useCallback((eventPayload: Parameters<typeof createEvent>[0]) => {
     const event = createEvent(eventPayload)
