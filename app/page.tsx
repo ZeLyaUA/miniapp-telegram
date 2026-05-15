@@ -23,6 +23,7 @@ export default function Page() {
   const [activeSection, setActiveSection] = useState<SectionId | null>(null)
   const [initialItemId, setInitialItemId] = useState<string | null>(null)
   const [firstName, setFirstName] = useState<string | null>(null)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const { state, dispatch } = useWellness()
   const { show: showTour, done: tourDone, reset: tourReset } = useOnboarding()
 
@@ -30,6 +31,7 @@ export default function Page() {
     try {
       const lp = retrieveLaunchParams()
       setFirstName(lp.tgWebAppData?.user?.first_name ?? null)
+      setPhotoUrl(lp.tgWebAppData?.user?.photo_url ?? null)
     } catch { /* вне Telegram */ }
   }, [])
 
@@ -129,7 +131,7 @@ export default function Page() {
     }
     if (activeTab === 'favorites') return <FavoritesView />
     if (activeTab === 'notifications') return <NotificationsView />
-    if (activeTab === 'profile') return <ProfileView onShowTour={handleShowTour} />
+    if (activeTab === 'profile') return <ProfileView onShowTour={handleShowTour} firstName={firstName} photoUrl={photoUrl} />
     return null
   }
 
