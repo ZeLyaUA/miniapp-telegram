@@ -2,13 +2,6 @@
 
 import { useState, useCallback, useMemo, useSyncExternalStore } from 'react'
 import { retrieveLaunchParams } from '@telegram-apps/sdk-react'
-
-const noopSubscribe = () => () => {}
-
-function getTgUser() {
-  try { return retrieveLaunchParams().tgWebAppData?.user ?? null }
-  catch { return null }
-}
 import { BottomNav } from '@/components/layout/BottomNav'
 import { SidebarNav } from '@/components/layout/SidebarNav'
 import { HomeView } from '@/components/home/HomeView'
@@ -24,6 +17,21 @@ import { useWellness, createEvent, syncEventToSupabase } from '@/lib/store/Welln
 import { useOnboarding } from '@/components/home/OnboardingTour'
 import { getStreakDays, offsetDateKey, computeWellnessIndex, computeInsights } from '@/lib/store/analytics'
 import type { TabId, SectionId } from '@/lib/types'
+
+const noopSubscribe = () => () => {}
+
+// Cache the launch-params object so getTgUser returns a stable reference.
+// retrieveLaunchParams() reparses on each call and returns a new object —
+// without caching, useSyncExternalStore would detect change-on-every-render and infinite-loop.
+type TgUser = { first_name?: string; photo_url?: string } | null
+let tgUserCache: TgUser | undefined
+
+function getTgUser(): TgUser {
+  if (tgUserCache !== undefined) return tgUserCache
+  try { tgUserCache = (retrieveLaunchParams().tgWebAppData?.user ?? null) as TgUser }
+  catch { tgUserCache = null }
+  return tgUserCache
+}
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
