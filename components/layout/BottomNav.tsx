@@ -32,14 +32,15 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             ? 'translateX(-50%) translateY(140%)'
             : 'translateX(-50%)',
           opacity: isKeyboardOpen ? 0 : 1,
+          visibility: isKeyboardOpen ? 'hidden' : 'visible',
           pointerEvents: isKeyboardOpen ? 'none' : 'auto',
-          transition: 'transform 180ms ease, opacity 140ms ease',
+          transition: 'transform 180ms ease, opacity 120ms ease, visibility 0s linear 120ms',
           borderRadius: '100px',
           background: 'rgba(18, 12, 30, 0.88)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
+          backdropFilter: isKeyboardOpen ? 'none' : 'blur(24px)',
+          WebkitBackdropFilter: isKeyboardOpen ? 'none' : 'blur(24px)',
           border: '1px solid rgba(255, 220, 170, 0.1)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 30px rgba(139,117,207,0.1)',
+          boxShadow: isKeyboardOpen ? 'none' : '0 8px 32px rgba(0,0,0,0.6), 0 0 30px rgba(139,117,207,0.1)',
         }}
       >
         {tabs.map(({ id, icon: Icon }) => {
