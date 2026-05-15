@@ -2,6 +2,7 @@
 
 import { Home, Star, Bell, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useVirtualKeyboard } from '@/lib/useVirtualKeyboard'
 import type { TabId } from '@/lib/types'
 
 const tabs: { id: TabId; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }> }[] = [
@@ -17,14 +18,22 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+  const { isKeyboardOpen } = useVirtualKeyboard()
+
   return (
     <>
       {/* Mobile: floating pill bottom — hidden on lg */}
       <nav
+        aria-hidden={isKeyboardOpen}
         className="fixed left-1/2 z-50 flex items-center gap-1 px-3 py-2.5 md:hidden"
         style={{
           bottom: 'max(20px, calc(env(safe-area-inset-bottom) + 8px))',
-          transform: 'translateX(-50%)',
+          transform: isKeyboardOpen
+            ? 'translateX(-50%) translateY(140%)'
+            : 'translateX(-50%)',
+          opacity: isKeyboardOpen ? 0 : 1,
+          pointerEvents: isKeyboardOpen ? 'none' : 'auto',
+          transition: 'transform 180ms ease, opacity 140ms ease',
           borderRadius: '100px',
           background: 'rgba(18, 12, 30, 0.88)',
           backdropFilter: 'blur(24px)',
