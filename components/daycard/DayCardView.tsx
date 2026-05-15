@@ -524,9 +524,9 @@ export function DayCardView({ onBack }: DayCardViewProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="header-pt px-4 pb-3">
+      <div className="header-pt px-4 pb-2">
         {/* Top row */}
-        <div className="flex items-start gap-3 mb-3">
+        <div className="flex items-start gap-3">
           <button
             onClick={onBack}
             className="flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 flex-shrink-0 mt-0.5"
@@ -541,10 +541,13 @@ export function DayCardView({ onBack }: DayCardViewProps) {
             <p className="label-upper mt-0.5">индивидуальная дорожная карта</p>
           </div>
         </div>
+      </div>
 
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 flex flex-col gap-3">
         {/* Day navigator */}
         <div
-          className="flex items-center justify-between px-3 py-2 rounded-2xl mb-2"
+          className="flex items-center justify-between px-3 py-2 rounded-2xl"
           style={{ background: 'rgba(255,248,235,0.04)', border: '1px solid rgba(255,220,170,0.07)' }}
         >
           <button
@@ -582,10 +585,7 @@ export function DayCardView({ onBack }: DayCardViewProps) {
             </span>
           ))}
         </div>
-      </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-28 flex flex-col gap-3">
         {dayCardBlocks.map(block => (
           <BlockCard key={block.id} block={block} doneIds={doneIds} onToggle={toggleTask} />
         ))}
