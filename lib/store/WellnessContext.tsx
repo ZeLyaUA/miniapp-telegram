@@ -3,17 +3,23 @@
 import { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react'
 import { retrieveLaunchParams } from '@telegram-apps/sdk-react'
 import type { WellnessEvent, WellnessEventPayload } from './types-events'
-import type { StorePlanItem, ActiveProgramState, Reminder, HabitDef, Assessment, DayTask } from '../types'
+import type {
+  StorePlanItem, ActiveProgramState, Reminder, HabitDef, Assessment, DayTask,
+  NotificationItem, NotificationSettings, NotificationEngineState,
+} from '../types'
 import {
   loadEventsFromLS, saveEventsToLS,
   loadStateFromLS, saveStateToLS,
   loadEventsFromSupabase, saveEventToSupabase,
   loadStateFromSupabase, saveStateToSupabase,
+  defaultNotificationSettings,
   type PersistedState,
 } from './persistence'
 import { todayKey, computeAllSnapshots, computeDailySnapshot } from './analytics'
 import { dayCardBlocks } from '../demo-data'
 import type { DailySnapshot } from '../types'
+import { computePendingNotifications } from '../notifications/engine'
+import { fireHaptic, fireTelegramPopup } from '../notifications/telegram'
 
 // ── Auto-check resolution ─────────────────────────────────────────────────────
 
@@ -90,6 +96,9 @@ export interface WellnessStore {
   favoriteBreathingIds: string[]
   reminders: Reminder[]
   habits: HabitDef[]
+  notifications: NotificationItem[]
+  notificationSettings: NotificationSettings
+  notificationEngineState: NotificationEngineState
   // Transient — surfaced to UI right after a session completes
   lastAutoChecks: AutoChecksNotice | null
 }
@@ -114,6 +123,12 @@ type Action =
   | { type: 'DELETE_REMINDER'; id: string }
   | { type: 'CHECK_HABIT'; event: WellnessEvent }
   | { type: 'CLEAR_AUTO_CHECKS' }
+  | { type: 'NOTIFY'; items: NotificationItem[]; now: number }
+  | { type: 'NOTIFICATION_TICK'; now: number }
+  | { type: 'MARK_NOTIFICATION_READ'; id: string }
+  | { type: 'MARK_ALL_NOTIFICATIONS_READ' }
+  | { type: 'DISMISS_NOTIFICATION'; id: string }
+  | { type: 'UPDATE_NOTIFICATION_SETTINGS'; settings: NotificationSettings }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
@@ -137,6 +152,9 @@ function fromPersistedState(state: PersistedState) {
     favoriteBreathingIds: state.favoriteBreathingIds,
     reminders: state.reminders,
     habits: state.habits,
+    notifications: state.notifications ?? [],
+    notificationSettings: state.notificationSettings ?? defaultNotificationSettings,
+    notificationEngineState: state.notificationEngineState ?? { lastTickAt: 0, deliveredKeys: [] },
   }
 }
 
@@ -380,6 +398,51 @@ function reducer(state: WellnessStore, action: Action): WellnessStore {
     case 'CLEAR_AUTO_CHECKS':
       return { ...state, lastAutoChecks: null }
 
+    case 'NOTIFY': {
+      const newKeys = action.items.map(n => n.dedupKey).filter((k): k is string => !!k)
+      // Cap deliveredKeys to last 500 to prevent unbounded growth
+      const merged = [...state.notificationEngineState.deliveredKeys, ...newKeys]
+      const trimmed = merged.length > 500 ? merged.slice(-500) : merged
+      return {
+        ...state,
+        notifications: action.items.length > 0 ? [...state.notifications, ...action.items] : state.notifications,
+        notificationEngineState: {
+          lastTickAt: action.now,
+          deliveredKeys: trimmed,
+        },
+      }
+    }
+
+    case 'NOTIFICATION_TICK':
+      return {
+        ...state,
+        notificationEngineState: {
+          ...state.notificationEngineState,
+          lastTickAt: action.now,
+        },
+      }
+
+    case 'MARK_NOTIFICATION_READ':
+      return {
+        ...state,
+        notifications: state.notifications.map(n => n.id === action.id && !n.isRead ? { ...n, isRead: true } : n),
+      }
+
+    case 'MARK_ALL_NOTIFICATIONS_READ':
+      return {
+        ...state,
+        notifications: state.notifications.map(n => n.isRead ? n : { ...n, isRead: true }),
+      }
+
+    case 'DISMISS_NOTIFICATION':
+      return {
+        ...state,
+        notifications: state.notifications.filter(n => n.id !== action.id),
+      }
+
+    case 'UPDATE_NOTIFICATION_SETTINGS':
+      return { ...state, notificationSettings: action.settings }
+
     default:
       return state
   }
@@ -406,6 +469,9 @@ function toPersistedState(s: WellnessStore): PersistedState {
     favoriteBreathingIds: s.favoriteBreathingIds,
     reminders: s.reminders,
     habits: s.habits,
+    notifications: s.notifications,
+    notificationSettings: s.notificationSettings,
+    notificationEngineState: s.notificationEngineState,
   }
 }
 
@@ -427,6 +493,9 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
     favoriteBreathingIds: [],
     reminders: [],
     habits: [],
+    notifications: [],
+    notificationSettings: defaultNotificationSettings,
+    notificationEngineState: { lastTickAt: 0, deliveredKeys: [] },
     lastAutoChecks: null,
   }
 
@@ -494,6 +563,52 @@ export function WellnessProvider({ children }: { children: ReactNode }) {
       newEvents.forEach(e => syncEventToSupabase(stateRef.current.userId, e))
     }
   }, [state.events, state.isLoading])
+
+  // Notification engine — tick every 30s while app is open
+  useEffect(() => {
+    if (state.isLoading) return
+    if (!state.notificationSettings.enabled) return
+    const tick = () => {
+      const s = stateRef.current
+      const pending = computePendingNotifications({
+        now: new Date(),
+        lastTickAt: s.notificationEngineState.lastTickAt,
+        deliveredKeys: new Set(s.notificationEngineState.deliveredKeys),
+        settings: s.notificationSettings,
+        snapshot: {
+          reminders: s.reminders,
+          activeProgram: s.activeProgram,
+          planItems: s.planItems,
+          donePlanItemsByDay: s.donePlanItemsByDay,
+          dailySnapshots: s.dailySnapshots,
+          assessmentsByDay: s.assessmentsByDay,
+        },
+      })
+      const now = Date.now()
+      if (pending.length > 0) dispatch({ type: 'NOTIFY', items: pending, now })
+      else dispatch({ type: 'NOTIFICATION_TICK', now })
+    }
+    tick()
+    const id = setInterval(tick, 30_000)
+    const onVisible = () => { if (!document.hidden) tick() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
+  }, [state.isLoading, state.notificationSettings.enabled])
+
+  // Telegram side-effects: haptic + (optional) popup for newly created notifications
+  const prevNotifLenRef = useRef(0)
+  useEffect(() => {
+    const fresh = state.notifications.slice(prevNotifLenRef.current)
+    prevNotifLenRef.current = state.notifications.length
+    if (fresh.length === 0) return
+    if (!state.notificationSettings.enabled) return
+    if (!state.notificationSettings.channels.inApp) return
+    if (state.notificationSettings.haptic) fireHaptic('success')
+    if (state.notificationSettings.showPopup) {
+      const important = fresh.find(n => n.kind === 'streak' || n.kind === 'achievement' || n.kind === 'program')
+      if (important) fireTelegramPopup(important.title, important.body)
+    }
+  }, [state.notifications, state.notificationSettings])
 
   return (
     <WellnessStateCtx.Provider value={state}>

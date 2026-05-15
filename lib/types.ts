@@ -105,12 +105,70 @@ export interface Program {
   days?: ProgramDay[]
 }
 
+export type NotificationCategory = 'meditation' | 'breathing' | 'general'
+
 export interface Reminder {
   id: string
   title: string
   time: string
   days: string[]
   isEnabled: boolean
+  category?: NotificationCategory
+  description?: string
+}
+
+export type NotificationKind =
+  | 'reminder'
+  | 'program'
+  | 'streak'
+  | 'achievement'
+  | 'summary_morning'
+  | 'summary_evening'
+  | 'system'
+
+export interface NotificationItem {
+  id: string
+  kind: NotificationKind
+  category?: NotificationCategory
+  title: string
+  body: string
+  icon: string
+  createdAt: number
+  dateKey: string
+  isRead: boolean
+  isDismissed: boolean
+  sourceId?: string
+  dedupKey?: string
+  payload?: Record<string, unknown>
+}
+
+export interface NotificationChannelSettings {
+  inApp: boolean
+  telegramBot: boolean
+}
+
+export interface NotificationCategorySettings {
+  reminder: boolean
+  program: boolean
+  streak: boolean
+  achievement: boolean
+  summaryMorning: boolean
+  summaryEvening: boolean
+}
+
+export interface NotificationSettings {
+  enabled: boolean
+  channels: NotificationChannelSettings
+  categories: NotificationCategorySettings
+  summaryMorningTime: string
+  summaryEveningTime: string
+  haptic: boolean
+  showPopup: boolean
+}
+
+export interface NotificationEngineState {
+  lastTickAt: number
+  deliveredKeys: string[]
 }
 
 export interface Habit {

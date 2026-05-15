@@ -2,6 +2,7 @@
 
 import { Home, Star, Bell, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useWellnessState } from '@/lib/store/WellnessContext'
 import type { TabId } from '@/lib/types'
 
 const tabs: { id: TabId; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }> }[] = [
@@ -17,6 +18,9 @@ interface SidebarNavProps {
 }
 
 export function SidebarNav({ activeTab, onTabChange }: SidebarNavProps) {
+  const wellness = useWellnessState()
+  const unread = wellness.notifications.filter(n => !n.isRead).length
+  const unreadLabel = unread > 9 ? '9+' : String(unread)
   return (
     <aside
       className="hidden lg:flex flex-col gap-1 px-3 py-6 h-full"
@@ -35,6 +39,7 @@ export function SidebarNav({ activeTab, onTabChange }: SidebarNavProps) {
 
       {tabs.map(({ id, label, icon: Icon }) => {
         const isActive = activeTab === id
+        const showBadge = id === 'notifications' && unread > 0
         return (
           <button
             key={id}
@@ -56,11 +61,24 @@ export function SidebarNav({ activeTab, onTabChange }: SidebarNavProps) {
               style={{ color: isActive ? 'var(--amber)' : 'rgba(255,248,235,0.8)', flexShrink: 0 }}
             />
             <span
-              className="text-sm font-medium"
+              className="text-sm font-medium flex-1"
               style={{ color: isActive ? 'var(--amber)' : 'rgba(255,248,235,0.8)' }}
             >
               {label}
             </span>
+            {showBadge && (
+              <span
+                className="flex items-center justify-center text-[10px] font-semibold leading-none"
+                style={{
+                  minWidth: 18, height: 18, padding: '0 5px',
+                  borderRadius: 9,
+                  background: 'var(--amber)',
+                  color: '#1a1024',
+                }}
+              >
+                {unreadLabel}
+              </span>
+            )}
           </button>
         )
       })}

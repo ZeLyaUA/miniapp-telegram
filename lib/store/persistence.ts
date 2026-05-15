@@ -1,5 +1,8 @@
 import type { WellnessEvent } from './types-events'
-import type { StorePlanItem, ActiveProgramState, Reminder, HabitDef, Assessment } from '../types'
+import type {
+  StorePlanItem, ActiveProgramState, Reminder, HabitDef, Assessment,
+  NotificationItem, NotificationSettings, NotificationEngineState,
+} from '../types'
 
 const LS_EVENTS = 'wellness_events_v1'
 const LS_STATE = 'wellness_state_v1'
@@ -14,6 +17,26 @@ export interface PersistedState {
   favoriteBreathingIds: string[]
   reminders: Reminder[]
   habits: HabitDef[]
+  notifications: NotificationItem[]
+  notificationSettings: NotificationSettings
+  notificationEngineState: NotificationEngineState
+}
+
+export const defaultNotificationSettings: NotificationSettings = {
+  enabled: true,
+  channels: { inApp: true, telegramBot: false },
+  categories: {
+    reminder: true,
+    program: true,
+    streak: true,
+    achievement: true,
+    summaryMorning: true,
+    summaryEvening: true,
+  },
+  summaryMorningTime: '08:30',
+  summaryEveningTime: '21:00',
+  haptic: true,
+  showPopup: false,
 }
 
 const emptyState: PersistedState = {
@@ -25,10 +48,13 @@ const emptyState: PersistedState = {
   favoriteMeditationIds: [],
   favoriteBreathingIds: [],
   reminders: [
-    { id: 'r1', title: 'Утренняя медитация', time: '08:00', days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'], isEnabled: true },
-    { id: 'r2', title: 'Вечернее дыхание', time: '21:00', days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], isEnabled: true },
-    { id: 'r3', title: 'Выходной ритуал', time: '10:00', days: ['Сб', 'Вс'], isEnabled: false },
+    { id: 'r1', title: 'Утренняя медитация', time: '08:00', days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'], isEnabled: true, category: 'meditation' },
+    { id: 'r2', title: 'Вечернее дыхание', time: '21:00', days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'], isEnabled: true, category: 'breathing' },
+    { id: 'r3', title: 'Выходной ритуал', time: '10:00', days: ['Сб', 'Вс'], isEnabled: false, category: 'general' },
   ],
+  notifications: [],
+  notificationSettings: defaultNotificationSettings,
+  notificationEngineState: { lastTickAt: 0, deliveredKeys: [] },
   habits: [
     { id: 'h1', label: 'Утренняя медитация', icon: 'Brain' },
     { id: 'h2', label: 'Дыхательные упражнения', icon: 'Wind' },

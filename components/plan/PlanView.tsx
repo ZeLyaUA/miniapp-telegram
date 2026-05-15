@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { useWellness, createEvent, syncEventToSupabase, syncStateToSupabase } from '@/lib/store/WellnessContext'
 import { getPlanItemsForProgramDay } from '@/lib/store/programUtils'
 import { getProgramTimeline, getProgramAdherence, getLastProgramActivityDate, daysBetween } from '@/lib/store/analytics'
-import type { Program, Reminder, SectionId, StorePlanItem, ActiveProgramState } from '@/lib/types'
+import type { Program, Reminder, SectionId, StorePlanItem, ActiveProgramState, NotificationCategory } from '@/lib/types'
 
 const tabs: { id: string; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
   { id: 'programs', label: 'Программы', icon: BookOpen },
@@ -57,6 +57,8 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
   const [newTitle, setNewTitle] = useState('')
   const [newTime, setNewTime] = useState('08:00')
   const [newDays, setNewDays] = useState<Set<string>>(new Set(['Пн', 'Вт', 'Ср', 'Чт', 'Пт']))
+  const [newCategory, setNewCategory] = useState<NotificationCategory>('general')
+  const [newDescription, setNewDescription] = useState('')
 
   const { animKey, animClass, setSwipeDir, pillsRef, contentRef, containerRef, touchHandlers } =
     useSwipeTabs(tabs, activeTab, setActiveTab)
@@ -168,6 +170,15 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
       return s
     })
 
+  const resetReminderForm = () => {
+    setShowReminderForm(false)
+    setNewTitle('')
+    setNewTime('08:00')
+    setNewDays(new Set(['Пн', 'Вт', 'Ср', 'Чт', 'Пт']))
+    setNewCategory('general')
+    setNewDescription('')
+  }
+
   const saveReminder = () => {
     if (!newTitle.trim() || newDays.size === 0) return
     const r: Reminder = {
@@ -176,10 +187,12 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
       time: newTime,
       days: DAY_LABELS.filter(d => newDays.has(d)),
       isEnabled: true,
+      category: newCategory,
+      description: newDescription.trim() || undefined,
     }
     dispatch({ type: 'ADD_REMINDER', reminder: r })
     syncStateToSupabase(state.userId, state)
-    setShowReminderForm(false); setNewTitle(''); setNewTime('08:00'); setNewDays(new Set(['Пн', 'Вт', 'Ср', 'Чт', 'Пт']))
+    resetReminderForm()
   }
 
   const deleteReminder = (id: string) => {
@@ -648,15 +661,22 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
             {/* ── Напоминания ── */}
             {activeTab === 'reminders' && (
               <div className="flex flex-col gap-3 mt-2 max-w-lg">
-                {storeReminders.map((reminder) => (
+                {storeReminders.map((reminder) => {
+                  const CategoryIcon = reminder.category === 'meditation' ? Brain
+                    : reminder.category === 'breathing' ? Wind
+                    : Bell
+                  return (
                   <GlassCard key={reminder.id} className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: reminder.isEnabled ? 'rgba(201,150,90,0.1)' : 'rgba(255,255,255,0.04)' }}>
-                        <Clock size={18} style={{ color: reminder.isEnabled ? 'var(--amber)' : 'rgba(255,255,255,0.2)' }} strokeWidth={1.5} />
+                        <CategoryIcon size={18} style={{ color: reminder.isEnabled ? 'var(--amber)' : 'rgba(255,255,255,0.2)' }} strokeWidth={1.5} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate" style={{ color: reminder.isEnabled ? 'white' : 'rgba(255,255,255,0.3)' }}>{reminder.title}</p>
                         <p className="text-xs mt-0.5" style={{ color: 'rgba(255,220,170,0.3)' }}>{reminder.time} · {reminder.days.join(', ')}</p>
+                        {reminder.description && (
+                          <p className="text-[11px] mt-0.5 truncate" style={{ color: 'rgba(255,220,170,0.45)' }}>{reminder.description}</p>
+                        )}
                       </div>
                       <button
                         onClick={() => deleteReminder(reminder.id)}
@@ -674,7 +694,8 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                       </button>
                     </div>
                   </GlassCard>
-                ))}
+                  )
+                })}
 
                 {showReminderForm ? (
                   <GlassCard className="p-4 flex flex-col gap-4">
@@ -688,6 +709,42 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
                         className="w-full rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none"
                         style={{ background: 'rgba(255,248,235,0.05)', border: '1px solid rgba(255,220,170,0.12)' }}
                         autoFocus
+                      />
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,220,170,0.4)' }}>Категория</p>
+                      <div className="flex gap-2">
+                        {([
+                          { id: 'meditation' as const, label: 'Медитация', Icon: Brain },
+                          { id: 'breathing' as const, label: 'Дыхание', Icon: Wind },
+                          { id: 'general' as const, label: 'Общее', Icon: Bell },
+                        ]).map(({ id, label, Icon }) => {
+                          const active = newCategory === id
+                          return (
+                            <button
+                              key={id}
+                              onClick={() => setNewCategory(id)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300"
+                              style={{ background: active ? 'rgba(201,150,90,0.2)' : 'rgba(255,248,235,0.05)', border: active ? '1px solid rgba(201,150,90,0.35)' : '1px solid rgba(255,220,170,0.08)', color: active ? 'var(--amber)' : 'rgba(255,220,170,0.4)' }}
+                            >
+                              <Icon size={12} strokeWidth={1.8} />
+                              {label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,220,170,0.4)' }}>Описание (опц.)</p>
+                      <input
+                        type="text"
+                        value={newDescription}
+                        onChange={e => setNewDescription(e.target.value)}
+                        placeholder="Текст уведомления"
+                        className="w-full rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none"
+                        style={{ background: 'rgba(255,248,235,0.05)', border: '1px solid rgba(255,220,170,0.12)' }}
                       />
                     </div>
 
@@ -720,7 +777,7 @@ export function PlanView({ onBack, onNavigate }: PlanViewProps) {
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { setShowReminderForm(false); setNewTitle(''); setNewTime('08:00'); setNewDays(new Set(['Пн', 'Вт', 'Ср', 'Чт', 'Пт'])) }}
+                        onClick={resetReminderForm}
                         className="flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-all duration-300"
                         style={{ background: 'rgba(255,248,235,0.04)', border: '1px solid rgba(255,220,170,0.08)', color: 'rgba(255,248,235,0.35)' }}
                       >

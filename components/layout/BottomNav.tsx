@@ -3,6 +3,7 @@
 import { Home, Star, Bell, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useVirtualKeyboard } from '@/lib/useVirtualKeyboard'
+import { useWellnessState } from '@/lib/store/WellnessContext'
 import type { TabId } from '@/lib/types'
 
 const tabs: { id: TabId; label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }> }[] = [
@@ -19,6 +20,9 @@ interface BottomNavProps {
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { isKeyboardOpen } = useVirtualKeyboard()
+  const wellness = useWellnessState()
+  const unread = wellness.notifications.filter(n => !n.isRead).length
+  const unreadLabel = unread > 9 ? '9+' : String(unread)
 
   return (
     <>
@@ -45,6 +49,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
       >
         {tabs.map(({ id, icon: Icon }) => {
           const isActive = activeTab === id
+          const showBadge = id === 'notifications' && unread > 0
           return (
             <button
               key={id}
@@ -63,6 +68,21 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                 strokeWidth={isActive ? 2 : 1.5}
                 style={{ color: isActive ? 'var(--amber)' : 'rgba(255,248,235,0.8)' }}
               />
+              {showBadge && (
+                <span
+                  className="absolute flex items-center justify-center text-[10px] font-semibold leading-none"
+                  style={{
+                    top: 2, right: 2,
+                    minWidth: 16, height: 16, padding: '0 4px',
+                    borderRadius: 8,
+                    background: 'var(--amber)',
+                    color: '#1a1024',
+                    boxShadow: '0 0 0 2px rgba(18, 12, 30, 0.88)',
+                  }}
+                >
+                  {unreadLabel}
+                </span>
+              )}
             </button>
           )
         })}
@@ -84,12 +104,13 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
       >
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id
+          const showBadge = id === 'notifications' && unread > 0
           return (
             <button
               key={id}
               onClick={() => onTabChange(id)}
               className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-300',
+                'relative flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-300',
                 isActive ? '' : 'opacity-40 hover:opacity-70'
               )}
               style={isActive ? {
@@ -107,6 +128,19 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               >
                 {label}
               </span>
+              {showBadge && (
+                <span
+                  className="flex items-center justify-center text-[10px] font-semibold leading-none"
+                  style={{
+                    minWidth: 16, height: 16, padding: '0 4px',
+                    borderRadius: 8,
+                    background: 'var(--amber)',
+                    color: '#1a1024',
+                  }}
+                >
+                  {unreadLabel}
+                </span>
+              )}
             </button>
           )
         })}
