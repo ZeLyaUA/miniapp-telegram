@@ -184,6 +184,22 @@ export interface DailySnapshot {
   assessment: Assessment | null
   pillarScores: Record<string, number>
   hadActivity: boolean
+  // Phase F additions — composite scores. Optional so legacy snapshots stay valid.
+  wellnessIndex?: number       // 0–100 composite for the day
+  discipline?: number          // 0–100 cadence/consistency component
+  vitality?: number            // 0–100 body-signals component (mood/energy/sleep/water)
+  practice?: number            // 0–100 actual practice volume component
+}
+
+export type InsightTone = 'positive' | 'neutral' | 'caution'
+
+export interface Insight {
+  id: string
+  tone: InsightTone
+  icon: string         // lucide icon name
+  title: string
+  detail?: string
+  metric?: string      // optional small numeric tag, e.g. "+1.4"
 }
 
 export interface PeriodStats {

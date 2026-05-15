@@ -15,7 +15,7 @@ import { ProfileView } from '@/components/profile/ProfileView'
 import { DayCardView } from '@/components/daycard/DayCardView'
 import { useWellness, createEvent, syncEventToSupabase } from '@/lib/store/WellnessContext'
 import { useOnboarding } from '@/components/home/OnboardingTour'
-import { getStreakDays, offsetDateKey } from '@/lib/store/analytics'
+import { getStreakDays, offsetDateKey, computeWellnessIndex, computeInsights } from '@/lib/store/analytics'
 import type { TabId, SectionId } from '@/lib/types'
 
 export default function Page() {
@@ -51,6 +51,23 @@ export default function Page() {
       return s + (snap?.meditationMinutes ?? 0) + (snap?.breathingMinutes ?? 0)
     }, 0)
   }, [state.dailySnapshots])
+
+  const wellness = useMemo(
+    () => computeWellnessIndex(state.events, state.assessmentsByDay, state.doneTasksByDay, state.todayKey),
+    [state.events, state.assessmentsByDay, state.doneTasksByDay, state.todayKey]
+  )
+
+  const weekWellness = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const k = offsetDateKey(-(6 - i))
+      return computeWellnessIndex(state.events, state.assessmentsByDay, state.doneTasksByDay, k).index
+    })
+  }, [state.events, state.assessmentsByDay, state.doneTasksByDay])
+
+  const insights = useMemo(
+    () => computeInsights(state.events, state.assessmentsByDay, state.doneTasksByDay, state.todayKey, 4),
+    [state.events, state.assessmentsByDay, state.doneTasksByDay, state.todayKey]
+  )
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab)
@@ -102,6 +119,9 @@ export default function Page() {
           meditationMinutesToday={state.dailySnapshots[state.todayKey]?.meditationMinutes ?? 0}
           breathingSessionsToday={state.dailySnapshots[state.todayKey]?.breathingSessionCount ?? 0}
           weekMinutes={weekMinutes}
+          wellness={wellness}
+          weekWellness={weekWellness}
+          insights={insights}
           showTour={showTour}
           onTourDone={tourDone}
         />

@@ -1,7 +1,7 @@
 import type { WellnessEvent } from './types-events'
-import type { DailySnapshot, PeriodStats, ActivityLogEntry, Assessment, PillarId, ActiveProgramState, Program } from '../types'
+import type { DailySnapshot, PeriodStats, ActivityLogEntry, Assessment, PillarId, ActiveProgramState, Program, Insight } from '../types'
 import { dayCardBlocks } from '../demo-data'
-import { HABIT_DETECTORS_BY_ID } from './habits'
+import { HABIT_DETECTORS, HABIT_DETECTORS_BY_ID } from './habits'
 
 // ── Pillar scoring (per-day) ──────────────────────────────────────────────────
 
@@ -140,7 +140,253 @@ export function computeDailySnapshot(
   const assessment = assessmentsByDay[dateKey] ?? null
   const hadActivity = meditationMinutes > 0 || breathingSessionCount > 0
 
-  return { dateKey, meditationMinutes, breathingSessionCount, breathingMinutes, assessment, pillarScores, hadActivity }
+  const practice = computePracticeScore(meditationMinutes, breathingMinutes, doneTaskIds.length)
+  const vitality = computeVitalityScore(assessment)
+  // Discipline can't be computed from a single day in isolation; left out here.
+  const wellnessIndex = computeWellnessIndexFromParts(practice, vitality, null)
+
+  return {
+    dateKey,
+    meditationMinutes,
+    breathingSessionCount,
+    breathingMinutes,
+    assessment,
+    pillarScores,
+    hadActivity,
+    practice,
+    vitality,
+    wellnessIndex,
+  }
+}
+
+// ── Wellness Index 2.0 ───────────────────────────────────────────────────────
+//
+// Three components, all 0–100:
+//   - practice : did you actually do the work today (minutes + tasks)
+//   - vitality : self-reported body signals (mood/energy/sleep/water/journal)
+//   - discipline : consistency across the trailing window (streaks, gaps)
+//
+// Composite weights are deliberately gentle so a missed day does not crush
+// the score — the index is meant to motivate, not punish.
+
+const PRACTICE_TARGET_MINUTES = 25        // 25 min combined practice = full
+const PRACTICE_TASK_BONUS_PER = 8         // each completed day-task adds up to this much, capped
+
+export function computePracticeScore(
+  meditationMinutes: number,
+  breathingMinutes: number,
+  doneTaskCount: number,
+): number {
+  const minutes = meditationMinutes + breathingMinutes
+  const fromMinutes = Math.min(70, (minutes / PRACTICE_TARGET_MINUTES) * 70)
+  const fromTasks = Math.min(30, doneTaskCount * PRACTICE_TASK_BONUS_PER)
+  return Math.round(Math.max(0, Math.min(100, fromMinutes + fromTasks)))
+}
+
+export function computeVitalityScore(assessment: Assessment | null): number {
+  if (!assessment) return 0
+  const parts: number[] = []
+  if (assessment.mood != null) parts.push((assessment.mood / 2) * 100)
+  if (assessment.sleepQuality != null) parts.push((assessment.sleepQuality / 2) * 100)
+  if (assessment.consciousness != null) parts.push((assessment.consciousness / 10) * 100)
+  if (assessment.energy != null) parts.push((assessment.energy / 10) * 100)
+  if (assessment.water != null) parts.push(Math.min(1, assessment.water / 8) * 100)
+  if (assessment.journal && assessment.journal.length >= 20) parts.push(100)
+  if (parts.length === 0) return 0
+  const avg = parts.reduce((a, b) => a + b, 0) / parts.length
+  return Math.round(Math.max(0, Math.min(100, avg)))
+}
+
+/**
+ * Window-based: counts active days in the trailing N-day window and penalises
+ * consecutive gaps. Range 0–100.
+ */
+export function computeDiscipline(
+  events: WellnessEvent[],
+  assessmentsByDay: Record<string, Assessment>,
+  doneTasksByDay: Record<string, string[]>,
+  todayDateKey: string,
+  windowDays = 7,
+): number {
+  let active = 0
+  let longestGap = 0
+  let currentGap = 0
+  for (let i = 0; i < windowDays; i++) {
+    const key = addDays(todayDateKey, -i)
+    const snap = computeDailySnapshot(events, assessmentsByDay, doneTasksByDay, key)
+    const hasAny =
+      snap.hadActivity
+      || snap.assessment != null
+      || (doneTasksByDay[key]?.length ?? 0) > 0
+    if (hasAny) {
+      active++
+      currentGap = 0
+    } else {
+      currentGap++
+      if (currentGap > longestGap) longestGap = currentGap
+    }
+  }
+  const consistencyPct = (active / windowDays) * 100
+  const gapPenalty = Math.min(40, longestGap * 12)
+  return Math.round(Math.max(0, Math.min(100, consistencyPct - gapPenalty * 0.4)))
+}
+
+export function computeWellnessIndexFromParts(
+  practice: number,
+  vitality: number,
+  discipline: number | null,
+): number {
+  // If discipline is unknown for this day, fall back to a 60/40 blend.
+  if (discipline == null) {
+    return Math.round(practice * 0.6 + vitality * 0.4)
+  }
+  return Math.round(practice * 0.45 + vitality * 0.30 + discipline * 0.25)
+}
+
+/** Compose discipline-aware Wellness Index for a specific day, using the trailing window. */
+export function computeWellnessIndex(
+  events: WellnessEvent[],
+  assessmentsByDay: Record<string, Assessment>,
+  doneTasksByDay: Record<string, string[]>,
+  dateKey: string,
+): { index: number; practice: number; vitality: number; discipline: number } {
+  const snap = computeDailySnapshot(events, assessmentsByDay, doneTasksByDay, dateKey)
+  const discipline = computeDiscipline(events, assessmentsByDay, doneTasksByDay, dateKey)
+  const index = computeWellnessIndexFromParts(snap.practice ?? 0, snap.vitality ?? 0, discipline)
+  return { index, practice: snap.practice ?? 0, vitality: snap.vitality ?? 0, discipline }
+}
+
+// ── Insights generator ───────────────────────────────────────────────────────
+//
+// Surfaces short, evidence-backed observations: streaks, deltas, correlations,
+// missing pieces. Used by HomeView and the weekly report.
+
+const fmtSign = (n: number) => (n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1))
+
+export function computeInsights(
+  events: WellnessEvent[],
+  assessmentsByDay: Record<string, Assessment>,
+  doneTasksByDay: Record<string, string[]>,
+  todayDateKey: string,
+  limit = 4,
+): Insight[] {
+  const out: Insight[] = []
+  const today = computeDailySnapshot(events, assessmentsByDay, doneTasksByDay, todayDateKey)
+  const yesterdayKey = addDays(todayDateKey, -1)
+  const yesterday = computeDailySnapshot(events, assessmentsByDay, doneTasksByDay, yesterdayKey)
+
+  // 1. Streak (≥ 2 days) — strong motivator.
+  const snapshots: Record<string, DailySnapshot> = {}
+  for (let i = 0; i < 14; i++) {
+    const k = addDays(todayDateKey, -i)
+    snapshots[k] = computeDailySnapshot(events, assessmentsByDay, doneTasksByDay, k)
+  }
+  const streak = getStreakDays(snapshots, todayDateKey)
+  if (streak >= 2) {
+    out.push({
+      id: 'streak',
+      tone: 'positive',
+      icon: 'Flame',
+      title: `Серия ${streak} ${pluralDays(streak)} подряд`,
+      detail: 'Не сбавляйте темп — короткая практика лучше пропуска.',
+      metric: `${streak}`,
+    })
+  }
+
+  // 2. Mood correlation: practice days vs rest days (needs ≥ 2 of each).
+  const corr = getMoodCorrelation(snapshots, 'meditation')
+  if (corr.diff != null && Math.abs(corr.diff) >= 0.3) {
+    out.push({
+      id: 'mood_meditation',
+      tone: corr.diff > 0 ? 'positive' : 'neutral',
+      icon: 'TrendingUp',
+      title: corr.diff > 0
+        ? 'Настроение выше в дни с медитацией'
+        : 'Связь медитации и настроения слабая',
+      detail: corr.diff > 0
+        ? `В среднем настроение на ${fmtSign(corr.diff)} балла выше, когда вы медитируете.`
+        : 'Попробуйте дольше или с утра — эффект становится заметнее.',
+      metric: fmtSign(corr.diff),
+    })
+  }
+
+  // 3. Yesterday vs today vitality jump/dip.
+  const dy = (today.vitality ?? 0) - (yesterday.vitality ?? 0)
+  if (yesterday.assessment && today.assessment && Math.abs(dy) >= 15) {
+    out.push({
+      id: 'vitality_delta',
+      tone: dy > 0 ? 'positive' : 'caution',
+      icon: dy > 0 ? 'ArrowUp' : 'ArrowDown',
+      title: dy > 0 ? 'Самочувствие лучше, чем вчера' : 'Самочувствие просело',
+      detail: dy > 0
+        ? 'Запомните, что помогло сегодня, и повторите завтра.'
+        : 'Сон, вода, короткая дыхательная — обычно поднимает.',
+      metric: `${dy > 0 ? '+' : ''}${dy}`,
+    })
+  }
+
+  // 4. Habits picked up automatically today — proves the system is "reading".
+  const todayDoneTaskIds = doneTasksByDay[todayDateKey] ?? []
+  const todayAssessment = assessmentsByDay[todayDateKey] ?? null
+  const autoHabits = HABIT_DETECTORS.filter(d => {
+    const dayEvents = events.filter(e => e.dateKey === todayDateKey)
+    return d.detect({ events: dayEvents, assessment: todayAssessment, doneTaskIds: todayDoneTaskIds, dateKey: todayDateKey })
+  })
+  if (autoHabits.length >= 2) {
+    out.push({
+      id: 'habits_auto',
+      tone: 'positive',
+      icon: 'Sparkles',
+      title: `${autoHabits.length} привычки засчитаны автоматически`,
+      detail: autoHabits.slice(0, 3).map(h => h.label).join(' · '),
+    })
+  }
+
+  // 5. Missing assessment after 18:00 — gentle prompt.
+  const hour = new Date().getHours()
+  if (!today.assessment && hour >= 18) {
+    out.push({
+      id: 'assessment_missing',
+      tone: 'caution',
+      icon: 'Edit3',
+      title: 'Не отметили день',
+      detail: 'Полминуты на карте дня — и неделя сложится в картину.',
+    })
+  }
+
+  // 6. Water lag.
+  if (todayAssessment?.water != null && todayAssessment.water < 4 && hour >= 16) {
+    out.push({
+      id: 'water_low',
+      tone: 'caution',
+      icon: 'Droplet',
+      title: 'Воды сегодня мало',
+      detail: `${todayAssessment.water} из 8 стаканов. Один прямо сейчас.`,
+      metric: `${todayAssessment.water}/8`,
+    })
+  }
+
+  // 7. Strong vitality day — celebrate.
+  if ((today.vitality ?? 0) >= 80 && today.assessment) {
+    out.push({
+      id: 'vitality_high',
+      tone: 'positive',
+      icon: 'Heart',
+      title: 'Сильный день по самочувствию',
+      detail: 'Запомните этот день — это ваш ориентир.',
+      metric: `${today.vitality}`,
+    })
+  }
+
+  return out.slice(0, limit)
+}
+
+function pluralDays(n: number): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return 'день'
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'дня'
+  return 'дней'
 }
 
 export function computeAllSnapshots(

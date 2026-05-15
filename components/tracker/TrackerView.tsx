@@ -2,21 +2,23 @@
 
 import { useState } from "react";
 import { useSwipeTabs } from "@/lib/useSwipeTabs";
-import { ChevronLeft, BarChart3, Activity, Heart, Repeat } from "lucide-react";
+import { ChevronLeft, BarChart3, Activity, Heart, Repeat, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatsTabInner } from "./StatsTab";
 import { ActivityTab } from "./ActivityTab";
 import { WellbeingTab } from "./WellbeingTab";
 import { HabitsTab } from "./HabitsTab";
+import { WeeklyReportTab } from "./WeeklyReportTab";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 
-type TrackerTab = "stats" | "activity" | "wellbeing" | "habits";
+type TrackerTab = "report" | "stats" | "activity" | "wellbeing" | "habits";
 
 const tabs: {
   id: TrackerTab;
   label: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
 }[] = [
+  { id: "report", label: "Отчёт недели", icon: FileText },
   { id: "stats", label: "Статистика", icon: BarChart3 },
   { id: "activity", label: "Активность", icon: Activity },
   { id: "wellbeing", label: "Самочувствие", icon: Heart },
@@ -28,7 +30,7 @@ interface TrackerViewProps {
 }
 
 export function TrackerView({ onBack }: TrackerViewProps) {
-  const [activeTab, setActiveTab] = useState<TrackerTab>("stats");
+  const [activeTab, setActiveTab] = useState<TrackerTab>("report");
 
   const {
     animKey,
@@ -106,6 +108,11 @@ export function TrackerView({ onBack }: TrackerViewProps) {
             className={cn("px-4 pb-28 md:pb-8 pt-1 min-h-full", animClass)}
             onAnimationEnd={() => setSwipeDir(null)}
           >
+            {activeTab === "report" && (
+              <ErrorBoundary name="WeeklyReportTab">
+                <WeeklyReportTab />
+              </ErrorBoundary>
+            )}
             {activeTab === "stats" && (
               <ErrorBoundary name="StatsTab">
                 <StatsTabInner />
